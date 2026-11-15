@@ -63,6 +63,10 @@ data class UiPrefs(
     val carVer: Int = 0,                // tăng mỗi khi chọn ảnh xe riêng mới (để nạp lại ảnh)
     val gearStyle: Int = 0,             // cách hiện cấp số ở trang 1: 0 thanh 7 ô, 1 dải số, 2 LED, 3 số lớn, 4 ẩn
     val homeTiles: String = "rpm,load,coolant,boost,iat,volt",   // 6 ô thông số ở trang 1 (3 trái từ trên xuống, 3 phải từ trên xuống)
+    val glass: Int = 3,                 // độ trong suốt của khung/ô: 0 đặc ... 4 trong suốt hoàn toàn
+    val frameShape: Int = 0,            // hình khung: 0 vát góc, 1 bo tròn, 2 lục giác, 3 vuông
+    val homeOffsets: String = "",       // vị trí đã kéo của các ô ở trang 1: "id=dx,dy;..." (dp)
+    val iconBlue: Boolean = false,      // biểu tượng ứng dụng: xanh kết hợp trắng theo tông đồng hồ xe
     val navVoice: Boolean = true,       // đọc chỉ dẫn dẫn đường bằng giọng nói
     val homeLayout: Int = 0,            // bố cục trang 1 (bộ Đồng hồ xe): 0 bố cục mới (ảnh xe + 6 ô), 1 thể thao (đồng hồ vòng tua dạng cung)
 )
@@ -105,6 +109,10 @@ fun loadPrefs(c: Context): UiPrefs {
         mapTilt = s.getBoolean("mapTilt", d.mapTilt),
         homeLayout = s.getInt("homeLayout", d.homeLayout).coerceIn(0, 1),
         navVoice = s.getBoolean("navVoice", d.navVoice),
+        iconBlue = s.getBoolean("iconBlue", d.iconBlue),
+        glass = s.getInt("glass", d.glass).coerceIn(0, 4),
+        frameShape = s.getInt("frameShape", d.frameShape).coerceIn(0, 3),
+        homeOffsets = s.getString("homeOffsets", d.homeOffsets) ?: d.homeOffsets,
         carImg = s.getInt("carImg", d.carImg).coerceIn(0, 3),
         carVer = s.getInt("carVer", d.carVer),
         gearStyle = s.getInt("gearStyle", d.gearStyle).coerceIn(0, 4),
@@ -122,7 +130,7 @@ fun savePrefs(c: Context, p: UiPrefs) {
         .putBoolean("trafficAlert", p.trafficAlert).putBoolean("alertSound", p.alertSound).putInt("mapStyle", p.mapStyle).putBoolean("mapHeadingUp", p.mapHeadingUp).putInt("mapMarker", p.mapMarker)
         .putString("pageOrder", p.pageOrder).putInt("loadSource", p.loadSource).putString("obdTiles", p.obdTiles)
         .putInt("mapEngine", p.mapEngine).putString("mapTilerKey", p.mapTilerKey).putInt("gearTrim", p.gearTrim)
-        .putInt("skin", p.skin).putInt("mapTheme", p.mapTheme).putBoolean("mapTilt", p.mapTilt).putInt("homeLayout", p.homeLayout).putBoolean("navVoice", p.navVoice)
+        .putInt("skin", p.skin).putInt("mapTheme", p.mapTheme).putBoolean("mapTilt", p.mapTilt).putInt("homeLayout", p.homeLayout).putBoolean("navVoice", p.navVoice).putBoolean("iconBlue", p.iconBlue).putInt("glass", p.glass).putInt("frameShape", p.frameShape).putString("homeOffsets", p.homeOffsets)
         .putInt("carImg", p.carImg).putInt("carVer", p.carVer).putInt("gearStyle", p.gearStyle).putString("homeTiles", p.homeTiles).apply()
 }
 
@@ -161,6 +169,11 @@ class Theme(val p: UiPrefs, val bgImage: ImageBitmap?) {
     val cutScale = if (kind == 3) 1.5f else 1f          // Robot vát góc to hơn
     val rowHi = when (kind) { 3 -> listOf(Color(0xFF2A313B), Color(0xFF181C22)); 4 -> listOf(Color(0xFF062A52), Color(0xFF03122B)); else -> listOf(Color(0xFF0A1B5C), Color(0xFF050E33)) }
     val rowLo = when (kind) { 3 -> Color(0xFF0F1216); 4 -> Color(0xFF020716); else -> Color(0xFF030717) }
+    // Khung trong suốt: nhân độ trong của màu nền khung theo p.glass để nhìn xuyên ra hình nền phía sau
+    val pa = floatArrayOf(1f, 0.6f, 0.35f, 0.15f, 0f)[p.glass.coerceIn(0, 4)]
+    val panelG = panel.copy(alpha = panel.alpha * pa)
+    val fillG = fill.map { it.copy(alpha = it.alpha * pa) }
+    val frameFillG = frameFill.copy(alpha = frameFill.alpha * pa)
     val pageBg = when (kind) { 3 -> listOf(Color(0xFF1B2027), Color(0xFF07090C)); 4 -> listOf(Color(0xFF061B45), Color(0xFF010208)); else -> listOf(Color(0xFF06103A), Color(0xFF01030C)) }
     val scale = floatArrayOf(0.95f, 1.1f, 1.25f, 1.4f)[p.textSize.coerceIn(0, 3)]
     val iconDp = intArrayOf(52, 60, 72, 84)[p.iconSize.coerceIn(0, 3)]

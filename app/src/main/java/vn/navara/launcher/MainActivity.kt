@@ -310,7 +310,7 @@ fun Modifier.card(shape: Shape = RoundedCornerShape(14.dp), selected: Boolean = 
         selected -> t.accent
         else -> t.ink.copy(alpha = if (t.mono != 0) 0.45f else 0.28f)
     }
-    return this.clip(shape).background(t.panel).border(if (selected || special) 2.5.dp else 1.5.dp, line, shape)
+    return this.clip(shape).background(t.panelG).border(if (selected || special) 2.5.dp else 1.5.dp, line, shape)
 }
 
 // Khung thiết kế rộng 640dp, cao tối thiểu 384dp (5:3, màn Navara 800x480 => x1.25); màn 4:3 800x600 cũng khớp
@@ -340,7 +340,7 @@ fun Root(applyBars: (Boolean) -> Unit) {
 
     BoxWithConstraints(Modifier.fillMaxSize().background(theme.bg)) {
         val d = minOf(constraints.maxWidth / 640f, constraints.maxHeight / 384f)
-        CompositionLocalProvider(LocalTheme provides theme, LocalDensity provides Density(d, theme.scale)) {
+        CompositionLocalProvider(LocalTheme provides theme, LocalDensity provides Density(d, theme.scale), LocalPrefUpdate provides update) {
             ProvideTextStyle(TextStyle(fontFamily = if (theme.mono == 0) ClusterFont else FontFamily.Default)) {
             Box(Modifier.fillMaxSize()) {
                 Background()
@@ -373,7 +373,7 @@ fun Root(applyBars: (Boolean) -> Unit) {
 @Composable
 fun Background() {
     val t = LocalTheme.current
-    if (t.mono >= 0) return   // nền đen trơn (hoặc trắng) theo bộ giao diện, không còn hình nền
+    if (t.mono != 0) return   // bộ Số đen / Số trắng: nền đen hoặc trắng trơn; các bộ còn lại dùng hình nền chọn trong Cài đặt
     when (t.p.bgStyle) {
         1 -> Topo(Modifier.fillMaxSize(), t.accent2.copy(alpha = if (t.p.dark) 0.35f else 0.25f), null)
         2 -> Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(t.bg, t.accent2.copy(alpha = 0.35f)))))
@@ -783,7 +783,7 @@ fun AppsPage(apps: List<AppEntry>, obd: ObdData, nav: Nav) {
                         val gk = if (t.p.navaraIcons) navaraIconKey(a.pkg, a.label) else null
                         Box(Modifier.size(tile).card(selected = a.pkg == sel), contentAlignment = Alignment.Center) {
                             if (gk != null) NavaraGlyph(gk, Modifier.size(tile * 0.72f), selected = a.pkg == sel)
-                            else if (t.p.whiteIcons) Image(a.white, a.label, Modifier.size(tile * 0.76f), colorFilter = if (a.pkg == sel) androidx.compose.ui.graphics.ColorFilter.tint(t.accent) else if (t.mono != 0) androidx.compose.ui.graphics.ColorFilter.tint(t.ink) else null)
+                            else if (t.p.whiteIcons) Image(a.white, a.label, (if (t.p.iconBlue && t.mono == 0 && a.pkg != sel) Modifier.size(tile * 0.76f).graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen).drawWithContent { drawContent(); drawRect(Brush.verticalGradient(listOf(Color.White, Color.White, t.blueLight)), blendMode = BlendMode.SrcIn) } else Modifier.size(tile * 0.76f)), colorFilter = if (a.pkg == sel) androidx.compose.ui.graphics.ColorFilter.tint(t.accent) else if (t.mono != 0) androidx.compose.ui.graphics.ColorFilter.tint(t.ink) else null)
                             else Image(a.color, a.label, Modifier.size(tile * 0.84f))
                         }
                         Text(a.label, color = if (a.pkg == sel) Acc else Ink, fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 2.dp))
@@ -1219,7 +1219,7 @@ fun BottomBar(nav: Nav, boost: Float?, showBoost: Boolean, modifier: Modifier = 
     val obd = rememberObd()
     val bi = intArrayOf(26, 30, 34, 38)[t.p.iconSize.coerceIn(0, 3)]
     val cluster = t.mono == 0
-    val bg = if (cluster) Color(0xFF050608) else when (mapDark) { null -> t.panel.copy(alpha = 0.96f); true -> Color(0xF2141A2E); false -> Color(0xF2FFFFFF) }
+    val bg = if (cluster) Color(0xFF050608).copy(alpha = t.pa) else when (mapDark) { null -> t.panel.copy(alpha = 0.96f); true -> Color(0xF2141A2E); false -> Color(0xF2FFFFFF) }
     val ink: Color? = if (cluster) null else when (mapDark) { null -> null; true -> Color(0xFFF2F5FA); false -> Color(0xFF1A1F2E) }
     val strip = if (cluster) Brush.horizontalGradient(listOf(t.blueDeep, t.blueLight, t.blueDeep)) else Brush.horizontalGradient(listOf(t.ink.copy(alpha = 0.4f), t.ink.copy(alpha = 0.4f)))
     Column(modifier) {

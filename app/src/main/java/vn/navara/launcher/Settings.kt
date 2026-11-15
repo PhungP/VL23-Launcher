@@ -51,6 +51,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
@@ -270,13 +271,15 @@ fun SettingsScreen(
             .background(if (t.mono == 0) Brush.verticalGradient(t.pageBg) else SolidColor(t.bg))
             .clickable(indication = null, interactionSource = remember { MutableInteractionSource() }) {}
     ) {
+        // Nút đóng luôn nổi phía trên, kể cả khi cuộn xuống cuối trang
+        Box(
+            Modifier.align(Alignment.TopEnd).padding(top = 5.dp, end = 12.dp).zIndex(10f).size(46.dp)
+                .clip(CircleShape).background(t.panelHi).border(2.dp, t.accent, CircleShape).clickable { onClose() },
+            contentAlignment = Alignment.Center
+        ) { Icon(Icons.Filled.Close, "Đóng", tint = t.ink, modifier = Modifier.size(28.dp)) }
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
             Box(Modifier.fillMaxWidth().height(54.dp), contentAlignment = Alignment.Center) {
                 Text("Cài đặt", color = t.ink, fontSize = 28.sp, fontWeight = FontWeight.Bold)
-                Icon(
-                    Icons.Filled.Close, null, tint = t.ink,
-                    modifier = Modifier.align(Alignment.CenterEnd).clickable { onClose() }.padding(horizontal = 18.dp, vertical = 10.dp).size(30.dp)
-                )
             }
             Box(Modifier.fillMaxWidth().height(3.dp).background(Brush.horizontalGradient(listOf(t.blueDeep, t.blueLight, t.blueDeep))))
             Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
@@ -295,8 +298,34 @@ fun SettingsScreen(
                     choice("Kích thước icon", listOf("Nhỏ", "Vừa", "Lớn", "Rất lớn"), p.iconSize) { onChange(p.copy(iconSize = it)) }
                     tg("Biểu tượng Navara đồng nhất", p.navaraIcons) { onChange(p.copy(navaraIcons = it)) }
                     if (!p.navaraIcons) tg("Biểu tượng gốc một màu trắng", p.whiteIcons) { onChange(p.copy(whiteIcons = it)) }
+                    if (p.navaraIcons || p.whiteIcons) tg("Biểu tượng xanh kết hợp trắng (theo tông đồng hồ xe)", p.iconBlue) { onChange(p.copy(iconBlue = it)) }
                     tg("Thanh tiêu đề phía trên", p.titleBar) { onChange(p.copy(titleBar = it)) }
                     tg("Ẩn thanh trạng thái hệ thống", p.hideBar) { onChange(p.copy(hideBar = it)) }
+                }
+
+                Group("Hình nền và khung") {
+                    choice(
+                        "Hình nền", listOf("Đen trơn", "Địa hình", "Chuyển màu", "Ảnh của bạn"), p.bgStyle,
+                        "Hình nền hiện phía sau mọi trang (trừ bộ Số đen / Số trắng). Khung trong suốt để nhìn xuyên ra hình nền."
+                    ) { onChange(p.copy(bgStyle = it)) }
+                    if (p.bgStyle == 3) line("Ảnh nền của bạn") { Btn("Chọn ảnh") { pick.launch("image/*") } }
+                    choice("Độ tối ảnh nền", listOf("Nhẹ", "Vừa", "Đậm"), p.dim) { onChange(p.copy(dim = it)) }
+                    choice(
+                        "Độ trong suốt khung", listOf("Đặc", "Hơi mờ", "Mờ", "Rất trong", "Trong"), p.glass,
+                        "Áp dụng cho các ô và khung ở trang 1, Ứng dụng, thông số OBD, nhạc và thanh dưới."
+                    ) { onChange(p.copy(glass = it)) }
+                    choice(
+                        "Hình khung thông số", listOf("Vát góc", "Bo tròn", "Lục giác", "Vuông"), p.frameShape,
+                        "Hình bao quanh các ô thông số và thanh thông tin ở trang 1 (bộ Đồng hồ, Robot, SciFi)."
+                    ) { onChange(p.copy(frameShape = it)) }
+                    if (p.homeLayout == 0 && p.skin !in 1..2) {
+                        line("Di chuyển các ô ở trang 1", "Mở trang 1 rồi dùng ngón tay kéo từng ô (6 ô thông số, thanh trên, cấp số) tới vị trí muốn. Bấm Xong để lưu.") {
+                            Btn("Bắt đầu") { HomeEdit.on.value = true; homeEvents.value = homeEvents.value + 1; onClose() }
+                        }
+                        if (p.homeOffsets.isNotEmpty()) line("Đưa các ô về vị trí mặc định") { Btn("Đặt lại") { onChange(p.copy(homeOffsets = "")) } }
+                    } else {
+                        note("Di chuyển ô chỉ dùng được với bố cục mới của bộ Đồng hồ xe, Robot hoặc SciFi.")
+                    }
                 }
 
                 Group("Trang 1: xe, thông số, cấp số") {
@@ -306,8 +335,8 @@ fun SettingsScreen(
                     ) { onChange(p.copy(carImg = it)) }
                     if (p.carImg == 1) line("Ảnh xe của bạn") { Btn("Chọn ảnh") { pickCar.launch("image/*") } }
                     choice(
-                        "Hiển thị cấp số", listOf("Thanh 7 ô", "Dải số", "LED", "Số lớn", "Ẩn"), p.gearStyle,
-                        "Cách hiện số đang cài ở dưới trang 1. Chọn Ẩn để dành chỗ cho các ô thông số và hình xe."
+                        "Hiển thị cấp số", listOf("Số thể thao", "Dải số", "LED", "Khung số", "Ẩn"), p.gearStyle,
+                        "Số thể thao: chỉ hiện cấp số hiện hành bằng một chữ số to, nghiêng. Các kiểu khác có thêm thanh hoặc khung. Chọn Ẩn để dành chỗ cho hình xe."
                     ) { onChange(p.copy(gearStyle = it)) }
                     val slots = parseHomeTiles(p.homeTiles)
                     val slotNames = listOf("Ô trái trên", "Ô trái giữa", "Ô trái dưới", "Ô phải trên", "Ô phải giữa", "Ô phải dưới")

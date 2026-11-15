@@ -117,11 +117,12 @@ fun NavaraGlyph(key: String, modifier: Modifier = Modifier, selected: Boolean = 
     val th = LocalTheme.current
     val mono = th.mono != 0
     val inkCol = if (selected) th.accent else th.ink   // icon trắng, đang chọn thì cam
+    val duo = th.p.iconBlue && th.mono == 0 && !selected   // xanh kết hợp trắng: nét chính trắng, điểm nhấn xanh
     val paths = remember(key) { els.map { PathParser().parsePathString(it.d).toPath() } }
     Canvas(modifier) {
         scale(size.width / 48f, Offset.Zero) {
             els.forEachIndexed { i, e ->
-                val col = inkCol
+                val col = if (duo && e.st != 0 && e.st != 3) th.blueLight else inkCol
                 if (e.st >= 3) {
                     drawPath(paths[i], col, style = Fill)
                 } else {
