@@ -56,9 +56,13 @@ data class UiPrefs(
     val mapMarker: Int = 1,             // biểu tượng xe trên bản đồ: 0 xe bán tải, 1 tam giác (mặc định)
     val mapHeadingUp: Boolean = true,   // bản đồ xoay theo hướng xe (xe luôn hướng lên), mặc định bật
     val mapStyle: Int = 0,              // bản đồ trang 3: 0 theo giao diện, 1 luôn sáng, 2 luôn tối
-    val skin: Int = 0,                  // bộ giao diện cho mọi trang: 0 thường, 1 điện tử mặt đen chữ trắng, 2 điện tử mặt trắng chữ đen
+    val skin: Int = 0,                  // bộ giao diện cho mọi trang: 0 đồng hồ xe, 1 điện tử đen, 2 điện tử trắng, 3 robot, 4 SciFi
     val mapTheme: Int = 0,              // kiểu bản đồ MapTiler: 0 Streets, 1 OpenStreetMap, 2 Bright
     val mapTilt: Boolean = false,       // nghiêng bản đồ 3D khi xoay theo hướng xe (MapLibre)
+    val carImg: Int = 0,                // hình xe ở trang 1: 0 ảnh Navara, 1 ảnh riêng, 2 khung dây, 3 bóng xe
+    val carVer: Int = 0,                // tăng mỗi khi chọn ảnh xe riêng mới (để nạp lại ảnh)
+    val gearStyle: Int = 0,             // cách hiện cấp số ở trang 1: 0 thanh 7 ô, 1 dải số, 2 LED, 3 số lớn, 4 ẩn
+    val homeTiles: String = "rpm,load,coolant,boost,iat,volt",   // 6 ô thông số ở trang 1 (3 trái từ trên xuống, 3 phải từ trên xuống)
     val navVoice: Boolean = true,       // đọc chỉ dẫn dẫn đường bằng giọng nói
     val homeLayout: Int = 0,            // bố cục trang 1 (bộ Đồng hồ xe): 0 bố cục mới (ảnh xe + 6 ô), 1 thể thao (đồng hồ vòng tua dạng cung)
 )
@@ -96,11 +100,15 @@ fun loadPrefs(c: Context): UiPrefs {
         gearTrim = s.getInt("gearTrim", d.gearTrim).coerceIn(0, 4),
         obdTiles = s.getString("obdTiles", d.obdTiles) ?: d.obdTiles,
         mapMarker = if (s.getInt("mapMarker", d.mapMarker) == 1) 1 else 0,  // giá trị cũ (đã bỏ chấm tròn) quy về xe bán tải
-        skin = s.getInt("skin", d.skin).coerceIn(0, 2),
+        skin = s.getInt("skin", d.skin).coerceIn(0, 4),
         mapTheme = s.getInt("mapTheme", d.mapTheme).coerceIn(0, 2),
         mapTilt = s.getBoolean("mapTilt", d.mapTilt),
         homeLayout = s.getInt("homeLayout", d.homeLayout).coerceIn(0, 1),
         navVoice = s.getBoolean("navVoice", d.navVoice),
+        carImg = s.getInt("carImg", d.carImg).coerceIn(0, 3),
+        carVer = s.getInt("carVer", d.carVer),
+        gearStyle = s.getInt("gearStyle", d.gearStyle).coerceIn(0, 4),
+        homeTiles = s.getString("homeTiles", d.homeTiles) ?: d.homeTiles,
     )
 }
 
@@ -114,26 +122,46 @@ fun savePrefs(c: Context, p: UiPrefs) {
         .putBoolean("trafficAlert", p.trafficAlert).putBoolean("alertSound", p.alertSound).putInt("mapStyle", p.mapStyle).putBoolean("mapHeadingUp", p.mapHeadingUp).putInt("mapMarker", p.mapMarker)
         .putString("pageOrder", p.pageOrder).putInt("loadSource", p.loadSource).putString("obdTiles", p.obdTiles)
         .putInt("mapEngine", p.mapEngine).putString("mapTilerKey", p.mapTilerKey).putInt("gearTrim", p.gearTrim)
-        .putInt("skin", p.skin).putInt("mapTheme", p.mapTheme).putBoolean("mapTilt", p.mapTilt).putInt("homeLayout", p.homeLayout).putBoolean("navVoice", p.navVoice).apply()
+        .putInt("skin", p.skin).putInt("mapTheme", p.mapTheme).putBoolean("mapTilt", p.mapTilt).putInt("homeLayout", p.homeLayout).putBoolean("navVoice", p.navVoice)
+        .putInt("carImg", p.carImg).putInt("carVer", p.carVer).putInt("gearStyle", p.gearStyle).putString("homeTiles", p.homeTiles).apply()
 }
 
 // Bộ giao diện (p.skin): 0 = kiểu đồng hồ xe Navara (nền đen, dải xanh dương, chọn thì cam, viền xanh lá cho ô đặc biệt),
-// 1 = điện tử mặt đen chữ trắng, 2 = điện tử mặt trắng chữ đen (mono != 0)
+// 1 = điện tử mặt đen chữ trắng, 2 = điện tử mặt trắng chữ đen (mono != 0),
+// 3 = Robot (kim loại xám, đinh tán, đèn hổ phách), 4 = SciFi (nền xanh đen, viền neon xanh lơ và tím hồng)
+// Robot và SciFi dùng chung bố cục với bộ Đồng hồ xe (mono = 0) nhưng đổi toàn bộ bảng màu và kiểu khung.
 class Theme(val p: UiPrefs, val bgImage: ImageBitmap?) {
-    val mono = p.skin.coerceIn(0, 2)
-    val bg = when (mono) { 1 -> Color.Black; 2 -> Color.White; else -> Color.Black }
-    val panel = when (mono) { 1 -> Color(0xFF121212); 2 -> Color(0xFFF0F0F0); else -> Color(0xFF06091A) }
-    val panelHi = when (mono) { 1 -> Color(0xFF242424); 2 -> Color(0xFFDDDDDD); else -> Color(0xFF1B2030) }
-    val ink = when (mono) { 1 -> Color.White; 2 -> Color.Black; else -> Color(0xFFF4F6FA) }
-    val muted = when (mono) { 1 -> Color(0xFF9A9A9A); 2 -> Color(0xFF555555); else -> Color(0xFFAAB3C5) }
-    val accent = if (mono != 0) ink else Color(0xFFFF7A1A)            // màu "đang chọn" (cam)
-    val accent2 = if (mono != 0) ink else Color(0xFF2B5CFF)           // xanh dương
-    val blue = if (mono != 0) ink.copy(alpha = 0.5f) else Color(0xFF2B5CFF)
-    val blueLight = if (mono != 0) ink.copy(alpha = 0.5f) else Color(0xFF38B6FF)
-    val blueDeep = if (mono != 0) ink.copy(alpha = 0.35f) else Color(0xFF1239D6)
-    val green = if (mono != 0) ink else Color(0xFF2DD36F)             // viền ô đặc biệt
+    val kind = p.skin.coerceIn(0, 4)
+    val mono = if (kind == 1 || kind == 2) kind else 0
+    val bg = when (kind) { 2 -> Color.White; 3 -> Color(0xFF0B0D10); 4 -> Color(0xFF02040C); else -> Color.Black }
+    val panel = when (kind) { 1 -> Color(0xFF121212); 2 -> Color(0xFFF0F0F0); 3 -> Color(0xFF161A20); 4 -> Color(0xFF050A1A); else -> Color(0xFF06091A) }
+    val panelHi = when (kind) { 1 -> Color(0xFF242424); 2 -> Color(0xFFDDDDDD); 3 -> Color(0xFF2A313B); 4 -> Color(0xFF0E1A3A); else -> Color(0xFF1B2030) }
+    val ink = when (kind) { 1 -> Color.White; 2 -> Color.Black; 3 -> Color(0xFFE6EAF0); 4 -> Color(0xFFE8FBFF); else -> Color(0xFFF4F6FA) }
+    val muted = when (kind) { 1 -> Color(0xFF9A9A9A); 2 -> Color(0xFF555555); 3 -> Color(0xFF9AA4B2); 4 -> Color(0xFF7FB7D6); else -> Color(0xFFAAB3C5) }
+    val accent = when (kind) { 1, 2 -> ink; 3 -> Color(0xFFFFB000); 4 -> Color(0xFF00E5FF); else -> Color(0xFFFF7A1A) }   // màu "đang chọn"
+    val accent2 = when (kind) { 1, 2 -> ink; 3 -> Color(0xFF22D3EE); 4 -> Color(0xFFFF2BD6); else -> Color(0xFF2B5CFF) }
+    val blue = when (kind) { 1, 2 -> ink.copy(alpha = 0.5f); 3 -> Color(0xFF8A94A6); 4 -> Color(0xFF00B8D4); else -> Color(0xFF2B5CFF) }
+    val blueLight = when (kind) { 1, 2 -> ink.copy(alpha = 0.5f); 3 -> Color(0xFFC7D0DC); 4 -> Color(0xFF5CF2FF); else -> Color(0xFF38B6FF) }
+    val blueDeep = when (kind) { 1, 2 -> ink.copy(alpha = 0.35f); 3 -> Color(0xFF4A5565); 4 -> Color(0xFF0A4DA8); else -> Color(0xFF1239D6) }
+    val green = when (kind) { 1, 2 -> ink; 3 -> Color(0xFF4ADE80); 4 -> Color(0xFF39FF88); else -> Color(0xFF2DD36F) }   // viền ô đặc biệt
     val onAccent = if (accent.luminance() > 0.3f) Color(0xFF0A0A14) else Color.White
     val onAccent2 = if (accent2.luminance() > 0.45f) Color(0xFF0A0A14) else Color.White   // chữ trên nền màu phụ
+    // Màu và kiểu khung dùng cho bộ có khung (mono = 0)
+    val line = when (kind) { 3 -> Color(0xFF7B8696); 4 -> Color(0xFF12B5D0); else -> Color(0xFF2C4A8A) }                 // viền khung
+    val fill = when (kind) { 3 -> listOf(Color(0xFF222831), Color(0xFF12161B)); 4 -> listOf(Color(0xFF04122B), Color(0xFF020816)); else -> listOf(Color(0xFF0B1A3D), Color(0xFF050D24)) }
+    val label = when (kind) { 3 -> Color(0xFFB7C0CC); 4 -> Color(0xFF5CE1F5); else -> Color(0xFF7F9AD0) }                 // nhãn nhỏ
+    val glow = when (kind) { 3 -> Color(0xFFFFB000); 4 -> Color(0xFF00E5FF); else -> Color(0xFF3D8BFF) }                  // màu số cấp đang cài
+    val homeBg = when (kind) {
+        3 -> listOf(Color(0xFF2A313B), Color(0xFF14181D), Color(0xFF07090C))
+        4 -> listOf(Color(0xFF0A1F4D), Color(0xFF050C28), Color(0xFF010208))
+        else -> listOf(Color(0xFF0E2C5C), Color(0xFF071634), Color(0xFF02050F))
+    }
+    val frameFill = when (kind) { 3 -> Color(0x73101419); 4 -> Color(0x66020A22); else -> Color(0x73050C20) }
+    val frameLine = when (kind) { 3 -> Color(0xFF3B4452); 4 -> Color(0xFF0F6C8A); else -> Color(0xFF1F3560) }
+    val cutScale = if (kind == 3) 1.5f else 1f          // Robot vát góc to hơn
+    val rowHi = when (kind) { 3 -> listOf(Color(0xFF2A313B), Color(0xFF181C22)); 4 -> listOf(Color(0xFF062A52), Color(0xFF03122B)); else -> listOf(Color(0xFF0A1B5C), Color(0xFF050E33)) }
+    val rowLo = when (kind) { 3 -> Color(0xFF0F1216); 4 -> Color(0xFF020716); else -> Color(0xFF030717) }
+    val pageBg = when (kind) { 3 -> listOf(Color(0xFF1B2027), Color(0xFF07090C)); 4 -> listOf(Color(0xFF061B45), Color(0xFF010208)); else -> listOf(Color(0xFF06103A), Color(0xFF01030C)) }
     val scale = floatArrayOf(0.95f, 1.1f, 1.25f, 1.4f)[p.textSize.coerceIn(0, 3)]
     val iconDp = intArrayOf(52, 60, 72, 84)[p.iconSize.coerceIn(0, 3)]
 }

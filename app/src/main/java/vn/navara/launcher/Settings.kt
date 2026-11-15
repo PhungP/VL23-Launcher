@@ -93,7 +93,7 @@ private class GB {
 private fun rowBrush(i: Int): Brush {
     val t = LocalTheme.current
     return if (t.mono == 0) {
-        if (i % 2 == 0) Brush.horizontalGradient(listOf(Color(0xFF0A1B5C), Color(0xFF050E33))) else SolidColor(Color(0xFF030717))
+        if (i % 2 == 0) Brush.horizontalGradient(t.rowHi) else SolidColor(t.rowLo)
     } else SolidColor(if (i % 2 == 0) t.panel else t.bg)
 }
 
@@ -220,6 +220,7 @@ fun SettingsScreen(
     obd: ObdData,
     onChange: (UiPrefs) -> Unit,
     onPickBg: (Uri) -> Unit,
+    onPickCar: (Uri) -> Unit,
     onClose: () -> Unit,
 ) {
     // Phím Back trên màn hình thoát khỏi trang Cài đặt
@@ -228,6 +229,9 @@ fun SettingsScreen(
     val t = LocalTheme.current
     val pick = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         if (uri != null) onPickBg(uri)
+    }
+    val pickCar = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        if (uri != null) onPickCar(uri)
     }
     fun open(i: Intent) { try { ctx.startActivity(i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) } catch (e: Exception) { } }
     val roleLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { }
@@ -263,7 +267,7 @@ fun SettingsScreen(
 
     Box(
         Modifier.fillMaxSize()
-            .background(if (t.mono == 0) Brush.verticalGradient(listOf(Color(0xFF06103A), Color(0xFF01030C))) else SolidColor(t.bg))
+            .background(if (t.mono == 0) Brush.verticalGradient(t.pageBg) else SolidColor(t.bg))
             .clickable(indication = null, interactionSource = remember { MutableInteractionSource() }) {}
     ) {
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
@@ -279,8 +283,9 @@ fun SettingsScreen(
 
                 Group("Giao diện") {
                     choice(
-                        "Bộ giao diện", listOf("Đồng hồ xe", "Điện tử đen", "Điện tử trắng"), p.skin,
-                        "Đồng hồ xe: nền đen, dải xanh dương, mục đang chọn màu cam. Điện tử: mặt đen chữ trắng hoặc mặt trắng chữ đen, số hiện bằng số 7 đoạn."
+                        "Bộ giao diện", listOf("Đồng hồ", "Số đen", "Số trắng", "Robot", "SciFi"), p.skin,
+                        "Đồng hồ: nền đen, dải xanh dương, mục đang chọn màu cam. Số đen / Số trắng: mặt đen chữ trắng hoặc mặt trắng chữ đen, số hiện bằng số 7 đoạn. " +
+                            "Robot: kim loại xám, đinh tán, đèn hổ phách. SciFi: nền xanh đen, viền neon xanh lơ và hồng tím."
                     ) { onChange(p.copy(skin = it)) }
                     choice(
                         "Bố cục trang 1", listOf("Bố cục mới", "Thể thao"), p.homeLayout,
@@ -292,6 +297,37 @@ fun SettingsScreen(
                     if (!p.navaraIcons) tg("Biểu tượng gốc một màu trắng", p.whiteIcons) { onChange(p.copy(whiteIcons = it)) }
                     tg("Thanh tiêu đề phía trên", p.titleBar) { onChange(p.copy(titleBar = it)) }
                     tg("Ẩn thanh trạng thái hệ thống", p.hideBar) { onChange(p.copy(hideBar = it)) }
+                }
+
+                Group("Trang 1: xe, thông số, cấp số") {
+                    choice(
+                        "Hình xe", listOf("Ảnh Navara", "Ảnh riêng", "Khung dây", "Bóng xe"), p.carImg,
+                        "Ảnh riêng: chọn ảnh xe của bạn (nên dùng PNG nền trong suốt). Khung dây và Bóng xe là hình vẽ vector, hợp với giao diện Robot và SciFi."
+                    ) { onChange(p.copy(carImg = it)) }
+                    if (p.carImg == 1) line("Ảnh xe của bạn") { Btn("Chọn ảnh") { pickCar.launch("image/*") } }
+                    choice(
+                        "Hiển thị cấp số", listOf("Thanh 7 ô", "Dải số", "LED", "Số lớn", "Ẩn"), p.gearStyle,
+                        "Cách hiện số đang cài ở dưới trang 1. Chọn Ẩn để dành chỗ cho các ô thông số và hình xe."
+                    ) { onChange(p.copy(gearStyle = it)) }
+                    val slots = parseHomeTiles(p.homeTiles)
+                    val slotNames = listOf("Ô trái trên", "Ô trái giữa", "Ô trái dưới", "Ô phải trên", "Ô phải giữa", "Ô phải dưới")
+                    fun setSlot(i: Int, d: Int) {
+                        val cur = HOME_METRICS.indexOfFirst { it.key == slots[i] }.coerceAtLeast(0)
+                        val nk = HOME_METRICS[(cur + d + HOME_METRICS.size) % HOME_METRICS.size].key
+                        onChange(p.copy(homeTiles = slots.toMutableList().also { it[i] = nk }.joinToString(",")))
+                    }
+                    slots.forEachIndexed { i, k ->
+                        line(slotNames[i]) {
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Text(homeMetric(k).label, color = t.ink, fontSize = 17.sp, fontWeight = FontWeight.Bold, maxLines = 1, modifier = Modifier.width(190.dp))
+                                Btn("◀") { setSlot(i, -1) }
+                                Btn("▶") { setSlot(i, 1) }
+                            }
+                        }
+                    }
+                    line("Khôi phục thông số mặc định", "Thông số chỉ hiện khi xe thực sự trả về giá trị; chưa có thì hiện --. Áp dụng cho bộ giao diện Đồng hồ, Robot, SciFi (bố cục mới).") {
+                        Btn("Khôi phục") { onChange(p.copy(homeTiles = UiPrefs().homeTiles)) }
+                    }
                 }
 
                 Group("Trang và điều hướng") {

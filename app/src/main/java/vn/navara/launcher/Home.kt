@@ -90,11 +90,21 @@ private val GearBlue = Color(0xFF3D8BFF)
 @Composable
 fun Modifier.panel(cut: Dp = 14.dp, left: Boolean = true, right: Boolean = true, line: Color? = null): Modifier {
     val t = LocalTheme.current
-    val shape = Chamfer(cut, left, right)
-    val c = line ?: (if (t.mono == 0) ClusterLine else t.ink.copy(alpha = 0.45f))
-    return this.clip(shape)
-        .background(if (t.mono == 0) Brush.verticalGradient(ClusterFill) else SolidColor(t.panel))
-        .border(2.dp, c, shape)
+    val shape = Chamfer(if (t.mono == 0) cut * t.cutScale else cut, left, right)
+    val c = line ?: (if (t.mono == 0) t.line else t.ink.copy(alpha = 0.45f))
+    var m = this.clip(shape)
+        .background(if (t.mono == 0) Brush.verticalGradient(t.fill) else SolidColor(t.panel))
+    if (t.kind == 4) m = m.border(5.dp, c.copy(alpha = 0.18f), shape)   // SciFi: quầng sáng neon quanh khung
+    m = m.border(if (t.kind == 4) 1.5.dp else 2.dp, c, shape)
+    if (t.kind == 3) {   // Robot: hai đinh tán ở giữa hai cạnh bên
+        m = m.drawBehind {
+            val col = Color(0xFF9AA4B2)
+            val o = 6.dp.toPx()
+            drawCircle(col, 2.2.dp.toPx(), Offset(o, size.height / 2f))
+            drawCircle(col, 2.2.dp.toPx(), Offset(size.width - o, size.height / 2f))
+        }
+    }
+    return m
 }
 
 // ---------- Trang 1 kiểu đồng hồ xe: thanh trên (giờ, thời tiết, đang phát), ảnh xe ở giữa với 6 ô chỉ số, thanh cấp số ----------
@@ -110,11 +120,12 @@ fun HomeCluster(obd: ObdData, media: MediaInfo, onGrant: () -> Unit, nav: Nav) {
     val temp = if (ww != null) "${ww!!.temp}°C" else "--"
     val line = weatherLine(ww)
     val heading = rememberHeading()
+    val slots = parseHomeTiles(t.p.homeTiles)
     Box(
         Modifier.fillMaxSize().drawBehind {
             drawRect(
                 Brush.radialGradient(
-                    listOf(Color(0xFF0E2C5C), Color(0xFF071634), Color(0xFF02050F)),
+                    t.homeBg,
                     center = Offset(size.width * 0.5f, size.height * 0.52f), radius = size.width * 0.62f
                 )
             )
@@ -149,33 +160,48 @@ fun HomeCluster(obd: ObdData, media: MediaInfo, onGrant: () -> Unit, nav: Nav) {
                 NowPlayingChip(media, onGrant, nav, Modifier.align(Alignment.CenterEnd).padding(end = 8.dp).width(228.dp).fillMaxHeight())
             }
             // khung giữa: 3 ô trái, ảnh xe, 3 ô phải
-            Box(Modifier.fillMaxWidth().weight(1f).background(Color(0x73050C20)).border(1.5.dp, Color(0xFF1F3560))) {
+            Box(Modifier.fillMaxWidth().weight(1f).background(t.frameFill).border(1.5.dp, t.frameLine)) {
                 Row(Modifier.fillMaxSize().padding(8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Column(Modifier.width(150.dp).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        ClusterTile("RPM", if (ok) rpm.toString() else "--", "", Modifier.weight(1f).fillMaxWidth(), true)
-                        ClusterTile("ENGINE LOAD", if (ok && obd.load != null) "$load" else "--", if (ok && obd.load != null) "%" else "", Modifier.weight(1f).fillMaxWidth(), true)
-                        val cool = obd.coolant
-                        ClusterTile("NHIỆT ĐỘ NƯỚC", if (ok && cool != null) "$cool" else "--", if (ok && cool != null) "°C" else "", Modifier.weight(1f).fillMaxWidth(), true, warn = cool != null && cool >= 105)
+                        for (i in 0..2) HomeSlot(slots[i], obd, Modifier.weight(1f).fillMaxWidth(), true)
                     }
                     CarPhoto(Modifier.weight(1f).fillMaxHeight())
                     Column(Modifier.width(150.dp).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        ClusterTile("TURBO BOOST", if (ok) "%.2f".format(boost) else "--", if (ok) "BAR" else "", Modifier.weight(1f).fillMaxWidth(), false)
-                        val iat = obd.intake
-                        ClusterTile("NHIỆT ĐỘ KHÍ NẠP", if (ok && iat != null) "$iat" else "--", if (ok && iat != null) "°C" else "", Modifier.weight(1f).fillMaxWidth(), false)
-                        ClusterTile("ĐIỆN ÁP ẮC QUY", if (ok && obd.volt != null) "%.1f".format(obd.volt) else "--", if (ok && obd.volt != null) "V" else "", Modifier.weight(1f).fillMaxWidth(), false)
+                        for (i in 3..5) HomeSlot(slots[i], obd, Modifier.weight(1f).fillMaxWidth(), false)
                     }
                 }
             }
-            // thanh cấp số
-            Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-                Box(
-                    Modifier.width(170.dp).height(18.dp).clip(Chamfer(6.dp, true, true)).background(Color(0xFF0A1A3C)),
-                    contentAlignment = Alignment.Center
-                ) { Text("CẤP SỐ / GEAR", color = Label, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 1.sp) }
-                GearBarCluster(if (ok) obd.gear else null, Modifier.fillMaxWidth().height(52.dp))
+            // cấp số: kiểu hiển thị chọn trong Cài đặt (thanh 7 ô, dải số, LED, số lớn, hoặc ẩn)
+            if (t.p.gearStyle != 4) {
+                val gv = if (ok) obd.gear else null
+                Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Box(
+                        Modifier.width(170.dp).height(18.dp).clip(Chamfer(6.dp, true, true)).background(t.fill[0]),
+                        contentAlignment = Alignment.Center
+                    ) { Text("CẤP SỐ / GEAR", color = t.label, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 1.sp) }
+                    when (t.p.gearStyle) {
+                        1 -> GearStrip(gv, Modifier.fillMaxWidth(), 52.dp)
+                        2 -> GearLed(gv, Modifier.fillMaxWidth(), 52.dp)
+                        3 -> GearBig(gv, Modifier.fillMaxWidth().height(52.dp))
+                        else -> GearBarCluster(gv, Modifier.fillMaxWidth().height(52.dp))
+                    }
+                }
             }
         }
     }
+}
+
+// Một ô thông số ở trang 1 theo khoá đã chọn (xe chưa trả về thì hiện --)
+@Composable
+private fun HomeSlot(key: String, obd: ObdData, modifier: Modifier, cutRight: Boolean) {
+    val m = homeMetric(key)
+    val raw = if (obd.status == ObdManager.OK) homeMetricValue(obd, key) else null
+    val v = smoothF(raw ?: 0f, 220)
+    val has = raw != null
+    ClusterTile(
+        m.label, if (has) String.format(java.util.Locale.US, "%." + m.dec + "f", v) else "--", if (has) m.unit else "",
+        modifier, cutRight, warn = has && m.warn != null && raw!! >= m.warn
+    )
 }
 
 // Ô chỉ số vát góc: nhãn xanh nhạt, giá trị trắng to (cam khi vượt ngưỡng), đơn vị nhỏ
@@ -186,7 +212,7 @@ private fun ClusterTile(label: String, value: String, unit: String, modifier: Mo
         modifier.panel(10.dp, left = !cutRight, right = cutRight),
         horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center
     ) {
-        Text(label, color = if (t.mono == 0) Label else t.muted, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 0.5.sp, maxLines = 1)
+        Text(label, color = if (t.mono == 0) t.label else t.muted, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 0.5.sp, maxLines = 1)
         Row(verticalAlignment = Alignment.Bottom) {
             Text(value, color = if (warn) t.accent else t.ink, fontSize = 27.sp, lineHeight = 29.sp, fontWeight = FontWeight.Bold, maxLines = 1)
             if (unit.isNotEmpty()) Text(unit, color = t.ink, fontSize = 13.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 3.dp, bottom = 3.dp))
@@ -194,22 +220,9 @@ private fun ClusterTile(label: String, value: String, unit: String, modifier: Mo
     }
 }
 
-// Ảnh xe ở giữa: hiện trọn chiếc xe, chỉ làm mờ dần phần nền ảnh ở rìa để hoà vào nền xanh đen
+// Hình xe ở giữa theo lựa chọn trong Cài đặt (ảnh Navara, ảnh riêng, khung dây, bóng xe)
 @Composable
-private fun CarPhoto(modifier: Modifier) {
-    Image(
-        painterResource(R.drawable.navara_photo), null,
-        modifier.graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen).drawWithContent {
-            drawContent()
-            val corner = sqrt(size.width * size.width + size.height * size.height) / 2f
-            drawRect(
-                Brush.radialGradient(0.0f to Color.Black, 0.60f to Color.Black, 1f to Color.Transparent, center = center, radius = corner),
-                blendMode = BlendMode.DstIn
-            )
-        },
-        contentScale = ContentScale.Fit
-    )
-}
+private fun CarPhoto(modifier: Modifier) = CarImage(modifier, 0.60f)
 
 // Ô đang phát trong thanh trên: không viền; bấm vào để chuyển nhanh sang trang phát nhạc (chưa cấp quyền đọc nhạc thì mở cấp quyền)
 @Composable
@@ -256,12 +269,12 @@ fun GearBarCluster(gear: Int?, modifier: Modifier = Modifier) {
             val active = gear == i
             val bar = when {
                 gear == null -> Color(0xFF2A2F3A)
-                active -> GearBlue
-                i < gear -> androidx.compose.ui.graphics.lerp(Color(0xFF6B7280), Color(0xFF3D82FF), if (gear <= 2) 0f else (i - 1) / (gear - 2f))
+                active -> t.glow
+                i < gear -> androidx.compose.ui.graphics.lerp(Color(0xFF6B7280), t.glow, if (gear <= 2) 0f else (i - 1) / (gear - 2f))
                 else -> Color(0xFF2A2F3A)
             }
             val barAnim by animateColorAsState(bar, tween(220), label = "gearBar")
-            val numCol by animateColorAsState(if (active) GearBlue else if (t.mono == 0) Color(0xFF98A3BA) else t.muted, tween(220), label = "gearNum")
+            val numCol by animateColorAsState(if (active) t.glow else if (t.mono == 0) Color(0xFF98A3BA) else t.muted, tween(220), label = "gearNum")
             Box(
                 Modifier.weight(1f).fillMaxHeight().drawBehind {
                     if (i > 1) drawLine(sep, Offset(0f, 6.dp.toPx()), Offset(0f, size.height - 6.dp.toPx()), 1.dp.toPx())
@@ -269,7 +282,7 @@ fun GearBarCluster(gear: Int?, modifier: Modifier = Modifier) {
             ) {
                 Text(
                     i.toString(), color = numCol, fontSize = if (active) 32.sp else 28.sp, fontWeight = FontWeight.Bold,
-                    style = if (active) TextStyle(shadow = Shadow(Color(0xFF2F7BFF), Offset.Zero, 28f)) else TextStyle.Default,
+                    style = if (active) TextStyle(shadow = Shadow(t.glow, Offset.Zero, 28f)) else TextStyle.Default,
                     modifier = Modifier.align(Alignment.TopCenter).padding(top = 3.dp)
                 )
                 Canvas(Modifier.align(Alignment.BottomCenter).padding(start = 10.dp, end = 10.dp, bottom = 5.dp).fillMaxWidth().height(6.dp)) {

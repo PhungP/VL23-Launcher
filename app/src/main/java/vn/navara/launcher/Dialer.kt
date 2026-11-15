@@ -80,7 +80,7 @@ fun DialerScreen(onClose: () -> Unit) {
     )
     Box(
         Modifier.fillMaxSize()
-            .background(if (t.mono == 0) Brush.verticalGradient(listOf(Color(0xFF06103A), Color(0xFF01030C))) else SolidColor(t.bg))
+            .background(if (t.mono == 0) Brush.verticalGradient(t.pageBg) else SolidColor(t.bg))
             .clickable(indication = null, interactionSource = remember { MutableInteractionSource() }) {}
     ) {
         Column(Modifier.fillMaxSize()) {

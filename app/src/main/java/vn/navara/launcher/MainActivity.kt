@@ -356,6 +356,11 @@ fun Root(applyBars: (Boolean) -> Unit) {
                             bg = withContext(Dispatchers.IO) { loadBg(ctx) }
                             update(prefs.copy(bgStyle = 3))
                         }
+                    }, { uri: Uri ->
+                        scope.launch {
+                            withContext(Dispatchers.IO) { saveCarImage(ctx, uri) }
+                            update(prefs.copy(carImg = 1, carVer = prefs.carVer + 1))
+                        }
                     }) { settings = false }
                 }
                 if (dialer) DialerScreen { dialer = false }
@@ -488,20 +493,7 @@ fun weatherLine(ww: Weather?): String {
 
 // Ảnh xe ở trang 1: hiện trọn cả chiếc xe; chỉ làm mờ nhẹ bốn góc để hoà vào nền đen
 @Composable
-private fun HeroPhoto(modifier: Modifier) {
-    Image(
-        painterResource(R.drawable.navara_photo), null,
-        modifier.graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen).drawWithContent {
-            drawContent()
-            val corner = kotlin.math.sqrt(size.width * size.width + size.height * size.height) / 2f
-            drawRect(
-                Brush.radialGradient(0.0f to Color.Black, 0.80f to Color.Black, 1f to Color.Transparent, center = center, radius = corner),
-                blendMode = BlendMode.DstIn
-            )
-        },
-        contentScale = ContentScale.Fit
-    )
-}
+private fun HeroPhoto(modifier: Modifier) = CarImage(modifier, 0.80f)
 
 // Ô đang phát nhỏ, không khung: ảnh bìa, tên bài, ca sĩ, album. Bấm vào để sang trang phát nhạc (chưa cấp quyền thì mở cấp quyền)
 @Composable
