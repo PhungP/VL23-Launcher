@@ -1,0 +1,160 @@
+package vn.navara.launcher
+
+import android.content.Context
+import android.graphics.BitmapFactory
+import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.text.font.DeviceFontFamilyName
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+import java.io.File
+
+// Các trang của launcher (id) và thứ tự mặc định
+val PAGE_IDS = listOf("home", "map", "music", "telemetry", "apps")
+
+// Chuỗi thứ tự đã lưu -> danh sách đủ 5 trang, mỗi trang đúng một lần (thiếu thì bổ sung cuối, lạ thì bỏ)
+fun parsePageOrder(s: String): List<String> {
+    val got = s.split(",").map { it.trim() }.filter { it in PAGE_IDS }.distinct()
+    return got + PAGE_IDS.filter { it !in got }
+}
+
+fun pageName(id: String): String = when (id) {
+    "home" -> "Trang chủ (OBD)"
+    "telemetry" -> "Thông số OBD (xe đua)"
+    "apps" -> "Ứng dụng"
+    "map" -> "Bản đồ"
+    else -> "Nhạc"
+}
+
+data class UiPrefs(
+    val dark: Boolean = true,
+    val accent: Int = 0xFFFF8A1F.toInt(),
+    val accent2: Int = 0xFF2F7BFF.toInt(),
+    val iconSize: Int = 1,   // 0..3: nhỏ, vừa, lớn, rất lớn
+    val textSize: Int = 1,   // 0..3: nhỏ, vừa, lớn, rất lớn
+    val bgStyle: Int = 0,    // 0 trơn, 1 đường đồng mức, 2 chuyển màu, 3 ảnh
+    val cardStyle: Int = 0,  // 0 đặc, 1 viền mỏng, 2 kính mờ
+    val dim: Int = 1,        // độ tối của ảnh nền 0..2
+    val obdSource: Int = 0,  // 0 kết nối trực tiếp, 1 Torque Pro
+    val hideBar: Boolean = true,
+    val whiteIcons: Boolean = true,
+    val navaraIcons: Boolean = true,    // biểu tượng ứng dụng đồng nhất kiểu Navara (trắng/cam/xanh)
+    val titleBar: Boolean = false,
+    val autoStart: Boolean = true,
+    val trafficAlert: Boolean = true,   // cảnh báo giới hạn tốc độ / camera
+    val alertSound: Boolean = true,     // âm báo khi cảnh báo
+    val pageOrder: String = "home,map,music,telemetry,apps",  // thứ tự các trang khi vuốt
+    val obdTiles: String = "",         // thông số hiển thị ở trang theo dõi OBD: rỗng = mặc định, "-" = không hiện gì, hoặc danh sách khoá
+    val loadSource: Int = 0,            // nguồn thanh engine load: 0 tự động, 1 tính toán, 2 chân ga, 3 mô-men
+    val mapEngine: Int = 0,             // công cụ bản đồ: 0 MapLibre + MapTiler (cần khoá), 1 OSM đơn giản
+    val mapTilerKey: String = "",       // khoá API MapTiler nhập trong Cài đặt (nếu trống dùng khoá khai báo lúc build)
+    val gearTrim: Int = 2,              // hiệu chỉnh cấp số: 0..4 = -6%, -3%, 0, +3%, +6%
+    val mapMarker: Int = 1,             // biểu tượng xe trên bản đồ: 0 xe bán tải, 1 tam giác (mặc định)
+    val mapHeadingUp: Boolean = true,   // bản đồ xoay theo hướng xe (xe luôn hướng lên), mặc định bật
+    val mapStyle: Int = 0,              // bản đồ trang 3: 0 theo giao diện, 1 luôn sáng, 2 luôn tối
+    val skin: Int = 0,                  // bộ giao diện cho mọi trang: 0 thường, 1 điện tử mặt đen chữ trắng, 2 điện tử mặt trắng chữ đen
+    val mapTheme: Int = 0,              // kiểu bản đồ MapTiler: 0 Streets, 1 OpenStreetMap, 2 Bright
+    val mapTilt: Boolean = false,       // nghiêng bản đồ 3D khi xoay theo hướng xe (MapLibre)
+    val navVoice: Boolean = true,       // đọc chỉ dẫn dẫn đường bằng giọng nói
+    val homeLayout: Int = 0,            // bố cục trang 1 (bộ Đồng hồ xe): 0 bố cục mới (ảnh xe + 6 ô), 1 thể thao (đồng hồ vòng tua dạng cung)
+)
+
+fun loadPrefs(c: Context): UiPrefs {
+    val s = c.getSharedPreferences("ui", Context.MODE_PRIVATE)
+    if (s.getInt("ver", 0) < 2) {
+        // Bản 0.3: biểu tượng xe mặc định là tam giác và bản đồ mặc định xoay theo hướng xe. Áp dụng một lần cho cả máy đã cài bản cũ.
+        s.edit().putInt("mapMarker", 1).putBoolean("mapHeadingUp", true).putInt("ver", 2).apply()
+    }
+    val d = UiPrefs()
+    return UiPrefs(
+        dark = s.getBoolean("dark", d.dark),
+        accent = s.getInt("accent", d.accent),
+        accent2 = s.getInt("accent2", d.accent2),
+        iconSize = s.getInt("iconSize", d.iconSize),
+        textSize = s.getInt("textSize", d.textSize),
+        bgStyle = s.getInt("bgStyle", d.bgStyle),
+        cardStyle = s.getInt("cardStyle", d.cardStyle),
+        dim = s.getInt("dim", d.dim),
+        obdSource = s.getInt("obdSource", d.obdSource),
+        hideBar = s.getBoolean("hideBar", d.hideBar),
+        whiteIcons = s.getBoolean("whiteIcons", d.whiteIcons),
+        navaraIcons = s.getBoolean("navaraIcons", d.navaraIcons),
+        titleBar = s.getBoolean("titleBar", d.titleBar),
+        autoStart = s.getBoolean("autoStart", d.autoStart),
+        trafficAlert = s.getBoolean("trafficAlert", d.trafficAlert),
+        alertSound = s.getBoolean("alertSound", d.alertSound),
+        mapStyle = s.getInt("mapStyle", d.mapStyle),
+        mapHeadingUp = s.getBoolean("mapHeadingUp", d.mapHeadingUp),
+        pageOrder = (s.getString("pageOrder", null) ?: d.pageOrder).let { if (it == "home,telemetry,apps,map,music" || it == "home,apps,map,music,telemetry") d.pageOrder else it },  // thứ tự mặc định cũ -> mặc định mới
+        loadSource = s.getInt("loadSource", d.loadSource).coerceIn(0, 3),
+        mapEngine = s.getInt("mapEngine", d.mapEngine).coerceIn(0, 1),
+        mapTilerKey = s.getString("mapTilerKey", d.mapTilerKey) ?: d.mapTilerKey,
+        gearTrim = s.getInt("gearTrim", d.gearTrim).coerceIn(0, 4),
+        obdTiles = s.getString("obdTiles", d.obdTiles) ?: d.obdTiles,
+        mapMarker = if (s.getInt("mapMarker", d.mapMarker) == 1) 1 else 0,  // giá trị cũ (đã bỏ chấm tròn) quy về xe bán tải
+        skin = s.getInt("skin", d.skin).coerceIn(0, 2),
+        mapTheme = s.getInt("mapTheme", d.mapTheme).coerceIn(0, 2),
+        mapTilt = s.getBoolean("mapTilt", d.mapTilt),
+        homeLayout = s.getInt("homeLayout", d.homeLayout).coerceIn(0, 1),
+        navVoice = s.getBoolean("navVoice", d.navVoice),
+    )
+}
+
+fun savePrefs(c: Context, p: UiPrefs) {
+    c.getSharedPreferences("ui", Context.MODE_PRIVATE).edit()
+        .putBoolean("dark", p.dark).putInt("accent", p.accent).putInt("accent2", p.accent2)
+        .putInt("iconSize", p.iconSize).putInt("textSize", p.textSize).putInt("bgStyle", p.bgStyle)
+        .putInt("cardStyle", p.cardStyle).putInt("dim", p.dim).putInt("obdSource", p.obdSource)
+        .putBoolean("hideBar", p.hideBar).putBoolean("whiteIcons", p.whiteIcons).putBoolean("navaraIcons", p.navaraIcons)
+        .putBoolean("titleBar", p.titleBar).putBoolean("autoStart", p.autoStart)
+        .putBoolean("trafficAlert", p.trafficAlert).putBoolean("alertSound", p.alertSound).putInt("mapStyle", p.mapStyle).putBoolean("mapHeadingUp", p.mapHeadingUp).putInt("mapMarker", p.mapMarker)
+        .putString("pageOrder", p.pageOrder).putInt("loadSource", p.loadSource).putString("obdTiles", p.obdTiles)
+        .putInt("mapEngine", p.mapEngine).putString("mapTilerKey", p.mapTilerKey).putInt("gearTrim", p.gearTrim)
+        .putInt("skin", p.skin).putInt("mapTheme", p.mapTheme).putBoolean("mapTilt", p.mapTilt).putInt("homeLayout", p.homeLayout).putBoolean("navVoice", p.navVoice).apply()
+}
+
+// Bộ giao diện (p.skin): 0 = kiểu đồng hồ xe Navara (nền đen, dải xanh dương, chọn thì cam, viền xanh lá cho ô đặc biệt),
+// 1 = điện tử mặt đen chữ trắng, 2 = điện tử mặt trắng chữ đen (mono != 0)
+class Theme(val p: UiPrefs, val bgImage: ImageBitmap?) {
+    val mono = p.skin.coerceIn(0, 2)
+    val bg = when (mono) { 1 -> Color.Black; 2 -> Color.White; else -> Color.Black }
+    val panel = when (mono) { 1 -> Color(0xFF121212); 2 -> Color(0xFFF0F0F0); else -> Color(0xFF06091A) }
+    val panelHi = when (mono) { 1 -> Color(0xFF242424); 2 -> Color(0xFFDDDDDD); else -> Color(0xFF1B2030) }
+    val ink = when (mono) { 1 -> Color.White; 2 -> Color.Black; else -> Color(0xFFF4F6FA) }
+    val muted = when (mono) { 1 -> Color(0xFF9A9A9A); 2 -> Color(0xFF555555); else -> Color(0xFFAAB3C5) }
+    val accent = if (mono != 0) ink else Color(0xFFFF7A1A)            // màu "đang chọn" (cam)
+    val accent2 = if (mono != 0) ink else Color(0xFF2B5CFF)           // xanh dương
+    val blue = if (mono != 0) ink.copy(alpha = 0.5f) else Color(0xFF2B5CFF)
+    val blueLight = if (mono != 0) ink.copy(alpha = 0.5f) else Color(0xFF38B6FF)
+    val blueDeep = if (mono != 0) ink.copy(alpha = 0.35f) else Color(0xFF1239D6)
+    val green = if (mono != 0) ink else Color(0xFF2DD36F)             // viền ô đặc biệt
+    val onAccent = if (accent.luminance() > 0.3f) Color(0xFF0A0A14) else Color.White
+    val onAccent2 = if (accent2.luminance() > 0.45f) Color(0xFF0A0A14) else Color.White   // chữ trên nền màu phụ
+    val scale = floatArrayOf(0.95f, 1.1f, 1.25f, 1.4f)[p.textSize.coerceIn(0, 3)]
+    val iconDp = intArrayOf(52, 60, 72, 84)[p.iconSize.coerceIn(0, 3)]
+}
+
+// Font chữ gọn kiểu đồng hồ xe: dùng họ chữ condensed có sẵn của Android (Roboto Condensed)
+val ClusterFont = FontFamily(
+    Font(DeviceFontFamilyName("sans-serif-condensed"), FontWeight.Normal),
+    Font(DeviceFontFamilyName("sans-serif-condensed"), FontWeight.Medium),
+    Font(DeviceFontFamilyName("sans-serif-condensed"), FontWeight.SemiBold),
+    Font(DeviceFontFamilyName("sans-serif-condensed"), FontWeight.Bold),
+)
+
+val LocalTheme = compositionLocalOf { Theme(UiPrefs(), null) }
+
+fun loadBg(ctx: Context): ImageBitmap? = try {
+    val f = File(ctx.filesDir, "bg.jpg")
+    if (!f.exists()) null else {
+        val o = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        BitmapFactory.decodeFile(f.path, o)
+        var s = 1
+        while (o.outWidth / s > 1600) s *= 2
+        BitmapFactory.decodeFile(f.path, BitmapFactory.Options().apply { inSampleSize = s })?.asImageBitmap()
+    }
+} catch (e: Exception) { null }
