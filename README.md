@@ -2,8 +2,8 @@
 
 Launcher Android dành cho màn hình đầu máy trên ô tô (thiết kế cho xe bán tải Nissan Navara NP300, màn hình ngang 800x480). Giao diện kiểu đồng hồ xe, hiển thị thông số OBD, bản đồ dẫn đường, nhạc đang phát và thời tiết ngay trên màn hình chính.
 
-**Nhà phát triển:** Phan Kim Phụng
-**Mã nguồn và bản phát hành:** https://github.com/PhungP/VL23-Launcher
+- **Nhà phát triển:** Phan Kim Phụng
+- **Mã nguồn và bản phát hành:** https://github.com/PhungP/VL23-Launcher
 
 ## Tính năng
 
@@ -33,6 +33,44 @@ Launcher Android dành cho màn hình đầu máy trên ô tô (thiết kế cho
 1. Tải file `.apk` mới nhất ở mục [Releases](https://github.com/PhungP/VL23-Launcher/releases).
 2. Cài vào thiết bị (cho phép cài ứng dụng không rõ nguồn nếu được hỏi).
 3. Mở Cài đặt của ứng dụng, đặt VL23 Launcher làm màn hình chính mặc định và cấp các quyền được liệt kê (vị trí, hiện trên ứng dụng khác, đọc nhạc đang phát).
+
+## Lịch sử thay đổi
+
+### 0.14
+- Bỏ hai bộ giao diện Số đen và Số trắng; còn Đồng hồ, Robot, SciFi.
+- Cấp số trang 1 chỉ còn hai kiểu: Số thể thao và Ô cấp số.
+- Thanh dock ở trang Bản đồ trong suốt, nhìn thấy bản đồ phía sau.
+- Hình nền tuỳ chọn không áp dụng cho trang 1 (trang 1 có nền và ảnh xe riêng).
+- Viền menu trong Cài đặt mảnh hơn, đúng 1 pixel, sắc nét.
+
+### 0.13
+- Khung và ô trong suốt ở trang 1, Ứng dụng, thông số OBD, nhạc; chỉnh được độ trong suốt (5 mức).
+- Thêm lựa chọn hình nền (đen trơn, địa hình, chuyển màu, ảnh riêng) và độ tối ảnh nền.
+- Chọn hình khung thông số: vát góc, bo tròn, lục giác, vuông.
+- Kéo di chuyển các ô ở trang 1 (6 ô thông số, thanh trên cùng, cấp số), có nút Đặt lại.
+
+### 0.12
+- Biểu tượng vẽ riêng cho vòng tua, tải động cơ, turbo, nhiệt độ khí nạp và điện áp ắc quy.
+- Biểu tượng nằm góc trái ô, số nằm giữa; ô rộng hơn, cỡ số lớn hơn.
+- Bỏ vạch ngăn cấp số ở chân trang 1; ảnh xe xuống sát mép dưới màn hình.
+- Biểu tượng ứng dụng có thêm kiểu xanh kết hợp trắng theo tông đồng hồ xe.
+
+### 0.11
+- Cấp số trang 1 hiện một chữ số to, nghiêng kiểu thể thao; bỏ thanh hiển thị số đi.
+- Nút đóng ở trang Cài đặt luôn nổi.
+- Thêm biểu tượng cho từng ô thông số OBD ở trang 1.
+
+### 0.10
+- Thêm hai bộ giao diện Robot và SciFi.
+- Chọn hình xe ở trang 1: ảnh Navara, ảnh riêng, khung dây, bóng xe.
+- Chọn 6 thông số OBD hiển thị ở trang 1 trong 19 thông số.
+- Chọn cách hiển thị cấp số hiện hành ở trang 1.
+
+### 0.9
+- Đổi tên ứng dụng thành VL23 Launcher.
+- Cập nhật ứng dụng trực tuyến từ GitHub Releases.
+- Thêm mục Giới thiệu: nhà phát triển Phan Kim Phụng và link GitHub.
+- Dẫn đường trên bản đồ MapLibre: tìm địa điểm, vẽ tuyến, chỉ dẫn tiếng Việt, đọc bằng giọng nói, tự tính lại đường.
 
 ## Cập nhật
 
