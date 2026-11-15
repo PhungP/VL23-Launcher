@@ -56,12 +56,12 @@ data class UiPrefs(
     val mapMarker: Int = 1,             // biểu tượng xe trên bản đồ: 0 xe bán tải, 1 tam giác (mặc định)
     val mapHeadingUp: Boolean = true,   // bản đồ xoay theo hướng xe (xe luôn hướng lên), mặc định bật
     val mapStyle: Int = 0,              // bản đồ trang 3: 0 theo giao diện, 1 luôn sáng, 2 luôn tối
-    val skin: Int = 0,                  // bộ giao diện cho mọi trang: 0 đồng hồ xe, 1 điện tử đen, 2 điện tử trắng, 3 robot, 4 SciFi
+    val skin: Int = 0,                  // bộ giao diện cho mọi trang: 0 đồng hồ xe, 3 robot, 4 SciFi (1, 2 đã bỏ)
     val mapTheme: Int = 0,              // kiểu bản đồ MapTiler: 0 Streets, 1 OpenStreetMap, 2 Bright
     val mapTilt: Boolean = false,       // nghiêng bản đồ 3D khi xoay theo hướng xe (MapLibre)
     val carImg: Int = 0,                // hình xe ở trang 1: 0 ảnh Navara, 1 ảnh riêng, 2 khung dây, 3 bóng xe
     val carVer: Int = 0,                // tăng mỗi khi chọn ảnh xe riêng mới (để nạp lại ảnh)
-    val gearStyle: Int = 0,             // cách hiện cấp số ở trang 1: 0 thanh 7 ô, 1 dải số, 2 LED, 3 số lớn, 4 ẩn
+    val gearStyle: Int = 0,             // cách hiện cấp số ở trang 1: 0 số thể thao, 1 ô cấp số
     val homeTiles: String = "rpm,load,coolant,boost,iat,volt",   // 6 ô thông số ở trang 1 (3 trái từ trên xuống, 3 phải từ trên xuống)
     val glass: Int = 3,                 // độ trong suốt của khung/ô: 0 đặc ... 4 trong suốt hoàn toàn
     val frameShape: Int = 0,            // hình khung: 0 vát góc, 1 bo tròn, 2 lục giác, 3 vuông
@@ -104,7 +104,7 @@ fun loadPrefs(c: Context): UiPrefs {
         gearTrim = s.getInt("gearTrim", d.gearTrim).coerceIn(0, 4),
         obdTiles = s.getString("obdTiles", d.obdTiles) ?: d.obdTiles,
         mapMarker = if (s.getInt("mapMarker", d.mapMarker) == 1) 1 else 0,  // giá trị cũ (đã bỏ chấm tròn) quy về xe bán tải
-        skin = s.getInt("skin", d.skin).coerceIn(0, 4),
+        skin = s.getInt("skin", d.skin).let { if (it == 1 || it == 2) 0 else it.coerceIn(0, 4) },
         mapTheme = s.getInt("mapTheme", d.mapTheme).coerceIn(0, 2),
         mapTilt = s.getBoolean("mapTilt", d.mapTilt),
         homeLayout = s.getInt("homeLayout", d.homeLayout).coerceIn(0, 1),
@@ -115,7 +115,7 @@ fun loadPrefs(c: Context): UiPrefs {
         homeOffsets = s.getString("homeOffsets", d.homeOffsets) ?: d.homeOffsets,
         carImg = s.getInt("carImg", d.carImg).coerceIn(0, 3),
         carVer = s.getInt("carVer", d.carVer),
-        gearStyle = s.getInt("gearStyle", d.gearStyle).coerceIn(0, 4),
+        gearStyle = s.getInt("gearMode", if (s.getInt("gearStyle", 0) == 3) 1 else 0).coerceIn(0, 1),
         homeTiles = s.getString("homeTiles", d.homeTiles) ?: d.homeTiles,
     )
 }
@@ -131,7 +131,7 @@ fun savePrefs(c: Context, p: UiPrefs) {
         .putString("pageOrder", p.pageOrder).putInt("loadSource", p.loadSource).putString("obdTiles", p.obdTiles)
         .putInt("mapEngine", p.mapEngine).putString("mapTilerKey", p.mapTilerKey).putInt("gearTrim", p.gearTrim)
         .putInt("skin", p.skin).putInt("mapTheme", p.mapTheme).putBoolean("mapTilt", p.mapTilt).putInt("homeLayout", p.homeLayout).putBoolean("navVoice", p.navVoice).putBoolean("iconBlue", p.iconBlue).putInt("glass", p.glass).putInt("frameShape", p.frameShape).putString("homeOffsets", p.homeOffsets)
-        .putInt("carImg", p.carImg).putInt("carVer", p.carVer).putInt("gearStyle", p.gearStyle).putString("homeTiles", p.homeTiles).apply()
+        .putInt("carImg", p.carImg).putInt("carVer", p.carVer).putInt("gearMode", p.gearStyle).putString("homeTiles", p.homeTiles).apply()
 }
 
 // Bộ giao diện (p.skin): 0 = kiểu đồng hồ xe Navara (nền đen, dải xanh dương, chọn thì cam, viền xanh lá cho ô đặc biệt),

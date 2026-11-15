@@ -109,7 +109,7 @@ private fun Group(title: String, build: GB.() -> Unit) {
             title.uppercase(), color = t.muted, fontSize = 15.sp, fontWeight = FontWeight.Bold,
             letterSpacing = 1.5.sp, modifier = Modifier.padding(start = 6.dp, bottom = 6.dp)
         )
-        Column(Modifier.fillMaxWidth().clip(shape).border(1.dp, t.ink.copy(alpha = 0.25f), shape)) {
+        Column(Modifier.fillMaxWidth().clip(shape).border(px(1), if (t.mono == 0) t.line else t.ink.copy(alpha = 0.25f), shape)) {
             var row = 0
             var i = 0
             while (i < l.size) {
@@ -136,7 +136,7 @@ private fun TwoCols(bg: Brush, a: E.Tg, b: E.Tg?) {
     val sep = t.blue.copy(alpha = 0.6f)
     Row(Modifier.fillMaxWidth().background(bg).height(56.dp)) {
         TgCell(a, Modifier.weight(1f).fillMaxHeight())
-        TgCell(b, Modifier.weight(1f).fillMaxHeight().drawBehind { drawLine(sep, Offset(0f, 0f), Offset(0f, size.height), 1.dp.toPx()) })
+        TgCell(b, Modifier.weight(1f).fillMaxHeight().drawBehind { drawLine(sep, Offset(0f, 0f), Offset(0f, size.height), 1f) })
     }
 }
 
@@ -180,11 +180,18 @@ private fun Toggle(on: Boolean, onChange: (Boolean) -> Unit) {
 }
 
 // Chọn một trong vài phương án: khung viền trắng, phương án đang chọn nền cam
+// Độ dày đúng n pixel màn hình (đổi từ dp theo mật độ hiện tại) để nét viền mảnh mà vẫn sắc
+@Composable
+private fun px(n: Int = 1): androidx.compose.ui.unit.Dp =
+    // 1 px: dùng Hairline (đúng 1 pixel vật lý, không bị làm tròn lên 2 px nên nét mảnh và sắc);
+    // từ 2 px trở lên trừ một chút để phép làm tròn lên của Compose không đẩy thành n + 1
+    if (n <= 1) androidx.compose.ui.unit.Dp.Hairline else ((n - 0.02f) / androidx.compose.ui.platform.LocalDensity.current.density).dp
+
 @Composable
 private fun Segmented(items: List<String>, sel: Int, onSel: (Int) -> Unit) {
     val t = LocalTheme.current
     val shape = RoundedCornerShape(8.dp)
-    Row(Modifier.clip(shape).border(2.dp, t.ink, shape)) {
+    Row(Modifier.clip(shape).border(px(1), t.ink, shape)) {
         items.forEachIndexed { i, label ->
             val on = i == sel
             Box(
@@ -203,7 +210,7 @@ private fun Btn(text: String, modifier: Modifier = Modifier, onClick: () -> Unit
     val t = LocalTheme.current
     val shape = RoundedCornerShape(8.dp)
     Box(
-        modifier.clip(shape).border(2.dp, t.ink, shape).clickable { onClick() }.padding(horizontal = 16.dp, vertical = 8.dp),
+        modifier.clip(shape).border(px(1), t.ink, shape).clickable { onClick() }.padding(horizontal = 16.dp, vertical = 8.dp),
         contentAlignment = Alignment.Center
     ) { Text(text, color = t.ink, fontSize = 18.sp, fontWeight = FontWeight.SemiBold, maxLines = 1) }
 }
@@ -274,22 +281,22 @@ fun SettingsScreen(
         // Nút đóng luôn nổi phía trên, kể cả khi cuộn xuống cuối trang
         Box(
             Modifier.align(Alignment.TopEnd).padding(top = 5.dp, end = 12.dp).zIndex(10f).size(46.dp)
-                .clip(CircleShape).background(t.panelHi).border(2.dp, t.accent, CircleShape).clickable { onClose() },
+                .clip(CircleShape).background(t.panelHi).border(px(2), t.accent, CircleShape).clickable { onClose() },
             contentAlignment = Alignment.Center
         ) { Icon(Icons.Filled.Close, "Đóng", tint = t.ink, modifier = Modifier.size(28.dp)) }
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
             Box(Modifier.fillMaxWidth().height(54.dp), contentAlignment = Alignment.Center) {
                 Text("Cài đặt", color = t.ink, fontSize = 28.sp, fontWeight = FontWeight.Bold)
             }
-            Box(Modifier.fillMaxWidth().height(3.dp).background(Brush.horizontalGradient(listOf(t.blueDeep, t.blueLight, t.blueDeep))))
+            Box(Modifier.fillMaxWidth().height(px(2)).background(Brush.horizontalGradient(listOf(t.blueDeep, t.blueLight, t.blueDeep))))
             Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
 
                 Group("Giao diện") {
                     choice(
-                        "Bộ giao diện", listOf("Đồng hồ", "Số đen", "Số trắng", "Robot", "SciFi"), p.skin,
-                        "Đồng hồ: nền đen, dải xanh dương, mục đang chọn màu cam. Số đen / Số trắng: mặt đen chữ trắng hoặc mặt trắng chữ đen, số hiện bằng số 7 đoạn. " +
+                        "Bộ giao diện", listOf("Đồng hồ", "Robot", "SciFi"), when (p.skin) { 3 -> 1; 4 -> 2; else -> 0 },
+                        "Đồng hồ: nền đen, dải xanh dương, mục đang chọn màu cam. " +
                             "Robot: kim loại xám, đinh tán, đèn hổ phách. SciFi: nền xanh đen, viền neon xanh lơ và hồng tím."
-                    ) { onChange(p.copy(skin = it)) }
+                    ) { onChange(p.copy(skin = listOf(0, 3, 4)[it])) }
                     choice(
                         "Bố cục trang 1", listOf("Bố cục mới", "Thể thao"), p.homeLayout,
                         "Chỉ áp dụng cho bộ Đồng hồ xe. Bố cục mới: ảnh xe ở giữa và 6 ô chỉ số. Thể thao: đồng hồ vòng tua dạng cung, la bàn và số cấp lớn ở giữa."
@@ -306,7 +313,7 @@ fun SettingsScreen(
                 Group("Hình nền và khung") {
                     choice(
                         "Hình nền", listOf("Đen trơn", "Địa hình", "Chuyển màu", "Ảnh của bạn"), p.bgStyle,
-                        "Hình nền hiện phía sau mọi trang (trừ bộ Số đen / Số trắng). Khung trong suốt để nhìn xuyên ra hình nền."
+                        "Hình nền hiện phía sau các trang Ứng dụng, thông số OBD và Nhạc. Trang 1 dùng ảnh xe riêng nên không áp dụng hình nền. Khung trong suốt để nhìn xuyên ra hình nền."
                     ) { onChange(p.copy(bgStyle = it)) }
                     if (p.bgStyle == 3) line("Ảnh nền của bạn") { Btn("Chọn ảnh") { pick.launch("image/*") } }
                     choice("Độ tối ảnh nền", listOf("Nhẹ", "Vừa", "Đậm"), p.dim) { onChange(p.copy(dim = it)) }
@@ -316,15 +323,15 @@ fun SettingsScreen(
                     ) { onChange(p.copy(glass = it)) }
                     choice(
                         "Hình khung thông số", listOf("Vát góc", "Bo tròn", "Lục giác", "Vuông"), p.frameShape,
-                        "Hình bao quanh các ô thông số và thanh thông tin ở trang 1 (bộ Đồng hồ, Robot, SciFi)."
+                        "Hình bao quanh các ô thông số và thanh thông tin ở trang 1."
                     ) { onChange(p.copy(frameShape = it)) }
-                    if (p.homeLayout == 0 && p.skin !in 1..2) {
+                    if (p.homeLayout == 0) {
                         line("Di chuyển các ô ở trang 1", "Mở trang 1 rồi dùng ngón tay kéo từng ô (6 ô thông số, thanh trên, cấp số) tới vị trí muốn. Bấm Xong để lưu.") {
                             Btn("Bắt đầu") { HomeEdit.on.value = true; homeEvents.value = homeEvents.value + 1; onClose() }
                         }
                         if (p.homeOffsets.isNotEmpty()) line("Đưa các ô về vị trí mặc định") { Btn("Đặt lại") { onChange(p.copy(homeOffsets = "")) } }
                     } else {
-                        note("Di chuyển ô chỉ dùng được với bố cục mới của bộ Đồng hồ xe, Robot hoặc SciFi.")
+                        note("Di chuyển ô chỉ dùng được với bố cục mới (không dùng cho bố cục Thể thao).")
                     }
                 }
 
@@ -335,8 +342,8 @@ fun SettingsScreen(
                     ) { onChange(p.copy(carImg = it)) }
                     if (p.carImg == 1) line("Ảnh xe của bạn") { Btn("Chọn ảnh") { pickCar.launch("image/*") } }
                     choice(
-                        "Hiển thị cấp số", listOf("Số thể thao", "Dải số", "LED", "Khung số", "Ẩn"), p.gearStyle,
-                        "Số thể thao: chỉ hiện cấp số hiện hành bằng một chữ số to, nghiêng. Các kiểu khác có thêm thanh hoặc khung. Chọn Ẩn để dành chỗ cho hình xe."
+                        "Hiển thị cấp số", listOf("Số thể thao", "Ô cấp số"), p.gearStyle,
+                        "Số thể thao: một chữ số to, nghiêng, không khung. Ô cấp số: chữ số nằm trong một ô có nhãn GEAR."
                     ) { onChange(p.copy(gearStyle = it)) }
                     val slots = parseHomeTiles(p.homeTiles)
                     val slotNames = listOf("Ô trái trên", "Ô trái giữa", "Ô trái dưới", "Ô phải trên", "Ô phải giữa", "Ô phải dưới")

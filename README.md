@@ -7,13 +7,19 @@ Launcher Android dành cho màn hình đầu máy trên ô tô (thiết kế cho
 
 ## Tính năng
 
-- **Trang chủ OBD:** vòng tua, tải động cơ, nhiệt độ nước, boost, nhiệt độ khí nạp, điện áp ắc quy; cấp số đang cài; la bàn, giờ, thời tiết, bài hát đang phát.
-- **Tùy chọn trang 1:** chọn hình xe (ảnh Navara, ảnh riêng, khung dây, bóng xe), chọn 6 thông số OBD hiển thị, chọn kiểu hiển thị cấp số (thanh 7 ô, dải số, LED, số lớn, ẩn).
-- **Giao diện:** Đồng hồ xe, Số đen, Số trắng, **Robot**, **SciFi**; chỉnh cỡ chữ, kích thước icon, thứ tự các trang.
-- **Bản đồ MapLibre:** bản đồ vector, xoay theo hướng xe, nghiêng 3D, cảnh báo giới hạn tốc độ và camera.
+- **Trang 1 (trang chủ):** hình xe ở giữa, 6 ô thông số OBD, thanh trên cùng (giờ, thời tiết, hướng đi, nhạc đang phát) và cấp số hiện hành.
+- **Tùy chọn trang 1:**
+  - Hình xe: ảnh Navara, ảnh riêng của bạn, khung dây hoặc bóng xe (vẽ vector).
+  - 6 ô thông số: mỗi ô chọn trong 19 thông số (vòng tua, tải động cơ, nhiệt độ nước, boost, khí nạp, điện áp, chân ga, mô-men, công suất, EGT...), có biểu tượng riêng.
+  - Cấp số: **Số thể thao** (một chữ số to, nghiêng) hoặc **Ô cấp số**.
+  - Kéo từng ô tới vị trí mong muốn (Cài đặt > Hình nền và khung > Di chuyển các ô ở trang 1).
+- **Giao diện:** ba bộ **Đồng hồ**, **Robot**, **SciFi**; chỉnh cỡ chữ, kích thước biểu tượng, thứ tự các trang.
+- **Hình nền và khung:** hình nền đen, địa hình, chuyển màu hoặc ảnh riêng (không áp dụng cho trang 1); độ trong suốt khung 5 mức; hình khung vát góc, bo tròn, lục giác hoặc vuông.
+- **Biểu tượng ứng dụng:** bộ biểu tượng Navara đồng nhất, biểu tượng gốc một màu trắng, hoặc xanh kết hợp trắng theo tông đồng hồ xe.
+- **Trang thông số OBD:** lưới mọi thông số xe báo hỗ trợ, giá trị đỉnh, thanh báo sang số.
+- **Bản đồ MapLibre:** bản đồ vector, xoay theo hướng xe, nghiêng 3D, cảnh báo giới hạn tốc độ và camera; thanh dock trong suốt.
 - **Dẫn đường:** tìm địa điểm, vẽ tuyến, chỉ dẫn rẽ bằng tiếng Việt, đọc bằng giọng nói, tự tính lại đường khi đi lệch.
-- **Theo dõi OBD kiểu xe đua:** lưới mọi thông số xe báo hỗ trợ, giá trị đỉnh.
-- **Nhạc:** hiện tên bài, ảnh bìa, điều khiển trình phát đang chạy.
+- **Nhạc:** tên bài, ảnh bìa, thông số âm thanh, hiệu ứng phổ và điều khiển trình phát đang chạy.
 - **Cập nhật trực tuyến:** kiểm tra và cài bản mới từ GitHub Releases ngay trong Cài đặt.
 
 ## Yêu cầu

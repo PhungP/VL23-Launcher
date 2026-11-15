@@ -142,7 +142,7 @@ fun HomeCluster(obd: ObdData, media: MediaInfo, onGrant: () -> Unit, nav: Nav) {
     val slots = parseHomeTiles(t.p.homeTiles)
     Box(
         Modifier.fillMaxSize().drawBehind {
-            if (t.p.bgStyle == 0) drawRect(
+            drawRect(
                 Brush.radialGradient(
                     t.homeBg,
                     center = Offset(size.width * 0.5f, size.height * 0.52f), radius = size.width * 0.62f
@@ -190,13 +190,11 @@ fun HomeCluster(obd: ObdData, media: MediaInfo, onGrant: () -> Unit, nav: Nav) {
                     }
                 }
                 // cấp số: mặc định chỉ một chữ số to nghiêng kiểu thể thao; có thể chọn kiểu khác hoặc ẩn trong Cài đặt
-                if (t.p.gearStyle != 4) {
+                run {
                     val gv = if (ok) obd.gear else null
                     Box(Modifier.align(Alignment.BottomCenter).padding(bottom = 4.dp).movable("gear")) {
                         when (t.p.gearStyle) {
-                            1 -> GearStrip(gv, Modifier.width(300.dp), 48.dp)
-                            2 -> GearLed(gv, Modifier.width(300.dp), 48.dp)
-                            3 -> GearBig(gv, Modifier.width(220.dp).height(60.dp))
+                            1 -> GearBig(gv, Modifier.width(220.dp).height(60.dp))
                             else -> GearSport(gv, Modifier.width(150.dp).height(78.dp))
                         }
                     }

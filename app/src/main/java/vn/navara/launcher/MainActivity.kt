@@ -476,9 +476,12 @@ fun weatherIcon(code: Int): ImageVector = when (code) {
 fun HomePage(obd: ObdData, media: MediaInfo, onGrant: () -> Unit, nav: Nav) {
     // Bộ giao diện điện tử (Cài đặt > Bộ giao diện) dùng bố cục số 7 đoạn; màu đen/trắng đã được Theme lo cho mọi trang
     val th = LocalTheme.current
-    if (th.mono != 0) HomeDigital(obd, media, onGrant, nav)
-    else if (th.p.homeLayout == 1) HomeSport(obd, media, onGrant, nav)
-    else HomeClassic(obd, media, onGrant, nav)
+    // Trang 1 có ảnh xe riêng nên không hiện hình nền chung: phủ nền đặc phía sau
+    Box(Modifier.fillMaxSize().background(th.bg)) {
+        if (th.mono != 0) HomeDigital(obd, media, onGrant, nav)
+        else if (th.p.homeLayout == 1) HomeSport(obd, media, onGrant, nav)
+        else HomeClassic(obd, media, onGrant, nav)
+    }
 }
 
 // Dòng mô tả thời tiết; chưa lấy được thì nói rõ lý do (mạng, giờ hệ thống sai...), dữ liệu quá cũ thì đánh dấu
@@ -849,19 +852,20 @@ fun MapPage(obd: ObdData, nav: Nav, update: (UiPrefs) -> Unit) {
         flash = false
     }
 
-    Column(Modifier.fillMaxSize()) {
-        Box(Modifier.weight(1f).fillMaxWidth()) {
+    val dockH = (3 + dockHeightDp(t.p.iconSize)).dp
+    Box(Modifier.fillMaxSize()) {
             val mapKey = t.p.mapTilerKey.ifBlank { BuildConfig.MAPTILER_KEY }.trim()
             if (t.p.mapEngine == 0 && mapKey.isNotBlank()) {
                 MapLibrePane(Modifier.fillMaxSize(), l, mapDark, zoom, if (on) tr.pois else emptyList(), hu, t.p.mapMarker, mapKey, t.p.mapTheme, t.p.mapTilt)
             } else {
                 MapPane(Modifier.fillMaxSize(), l, mapDark, zoom, 0.5f, if (on) tr.pois else emptyList(), hu, t.p.mapMarker)
                 if (t.p.mapEngine == 0) {
-                    MapChip(ovBg, Modifier.align(Alignment.BottomCenter).padding(bottom = 10.dp)) {
+                    MapChip(ovBg, Modifier.align(Alignment.BottomCenter).padding(bottom = dockH + 10.dp)) {
                         Text("Chưa có khoá MapTiler (vào Cài đặt) – đang dùng bản đồ OSM đơn giản", color = ovInk, fontSize = 15.sp)
                     }
                 }
             }
+            Box(Modifier.fillMaxSize().padding(bottom = dockH)) {
             // Dẫn đường chỉ có trên bản đồ MapLibre (cần vẽ tuyến lên bản đồ vector)
             val naviOk = t.p.mapEngine == 0 && mapKey.isNotBlank()
             // Nút zoom to; bản đồ không nhận thao tác chạm/kéo nên vuốt đổi trang không bị nhầm
@@ -932,7 +936,7 @@ fun MapPage(obd: ObdData, nav: Nav, update: (UiPrefs) -> Unit) {
                 if (showNav) NavSearchOverlay(ovBg, ovInk, t.accent, t.onAccent, l) { showNav = false }
             }
         }
-        BottomBar(nav, null, false, Modifier.fillMaxWidth(), mapDark)
+        BottomBar(nav, null, false, Modifier.align(Alignment.BottomCenter).fillMaxWidth(), mapDark)
     }
 }
 
@@ -1219,8 +1223,8 @@ fun BottomBar(nav: Nav, boost: Float?, showBoost: Boolean, modifier: Modifier = 
     val obd = rememberObd()
     val bi = intArrayOf(26, 30, 34, 38)[t.p.iconSize.coerceIn(0, 3)]
     val cluster = t.mono == 0
-    val bg = if (cluster) Color(0xFF050608).copy(alpha = t.pa) else when (mapDark) { null -> t.panel.copy(alpha = 0.96f); true -> Color(0xF2141A2E); false -> Color(0xF2FFFFFF) }
-    val ink: Color? = if (cluster) null else when (mapDark) { null -> null; true -> Color(0xFFF2F5FA); false -> Color(0xFF1A1F2E) }
+    val bg = if (mapDark != null) Color.Transparent else if (cluster) Color(0xFF050608).copy(alpha = t.pa) else when (mapDark) { null -> t.panel.copy(alpha = 0.96f); true -> Color(0xF2141A2E); false -> Color(0xF2FFFFFF) }
+    val ink: Color? = if (mapDark == false) Color(0xFF1A1F2E) else if (cluster) null else when (mapDark) { null -> null; true -> Color(0xFFF2F5FA); false -> Color(0xFF1A1F2E) }
     val strip = if (cluster) Brush.horizontalGradient(listOf(t.blueDeep, t.blueLight, t.blueDeep)) else Brush.horizontalGradient(listOf(t.ink.copy(alpha = 0.4f), t.ink.copy(alpha = 0.4f)))
     Column(modifier) {
     Box(Modifier.fillMaxWidth().height(3.dp).background(strip))
