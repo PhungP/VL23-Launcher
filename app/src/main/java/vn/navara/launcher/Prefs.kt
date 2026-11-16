@@ -63,6 +63,7 @@ data class UiPrefs(
     val carVer: Int = 0,                // tăng mỗi khi chọn ảnh xe riêng mới (để nạp lại ảnh)
     val gearStyle: Int = 0,             // cách hiện cấp số ở trang 1: 0 số thể thao, 1 ô cấp số
     val homeTiles: String = "rpm,load,coolant,boost,iat,volt",   // 6 ô thông số ở trang 1 (3 trái từ trên xuống, 3 phải từ trên xuống)
+    val vehicle: String = "nissan_navara_2023_vl",   // hồ sơ xe đang chọn (Vehicles.kt)
     val glass: Int = 3,                 // độ trong suốt của khung/ô: 0 đặc ... 4 trong suốt hoàn toàn
     val frameShape: Int = 0,            // hình khung: 0 vát góc, 1 bo tròn, 2 lục giác, 3 vuông
     val homeOffsets: String = "",       // vị trí đã kéo của các ô ở trang 1: "id=dx,dy;..." (dp)
@@ -111,6 +112,7 @@ fun loadPrefs(c: Context): UiPrefs {
         navVoice = s.getBoolean("navVoice", d.navVoice),
         iconBlue = s.getBoolean("iconBlue", d.iconBlue),
         glass = s.getInt("glass", d.glass).coerceIn(0, 4),
+        vehicle = s.getString("vehicle", d.vehicle) ?: d.vehicle,
         frameShape = s.getInt("frameShape", d.frameShape).coerceIn(0, 3),
         homeOffsets = s.getString("homeOffsets", d.homeOffsets) ?: d.homeOffsets,
         carImg = s.getInt("carImg", d.carImg).coerceIn(0, 3),
@@ -130,7 +132,7 @@ fun savePrefs(c: Context, p: UiPrefs) {
         .putBoolean("trafficAlert", p.trafficAlert).putBoolean("alertSound", p.alertSound).putInt("mapStyle", p.mapStyle).putBoolean("mapHeadingUp", p.mapHeadingUp).putInt("mapMarker", p.mapMarker)
         .putString("pageOrder", p.pageOrder).putInt("loadSource", p.loadSource).putString("obdTiles", p.obdTiles)
         .putInt("mapEngine", p.mapEngine).putString("mapTilerKey", p.mapTilerKey).putInt("gearTrim", p.gearTrim)
-        .putInt("skin", p.skin).putInt("mapTheme", p.mapTheme).putBoolean("mapTilt", p.mapTilt).putInt("homeLayout", p.homeLayout).putBoolean("navVoice", p.navVoice).putBoolean("iconBlue", p.iconBlue).putInt("glass", p.glass).putInt("frameShape", p.frameShape).putString("homeOffsets", p.homeOffsets)
+        .putInt("skin", p.skin).putInt("mapTheme", p.mapTheme).putBoolean("mapTilt", p.mapTilt).putInt("homeLayout", p.homeLayout).putBoolean("navVoice", p.navVoice).putBoolean("iconBlue", p.iconBlue).putString("vehicle", p.vehicle).putInt("glass", p.glass).putInt("frameShape", p.frameShape).putString("homeOffsets", p.homeOffsets)
         .putInt("carImg", p.carImg).putInt("carVer", p.carVer).putInt("gearMode", p.gearStyle).putString("homeTiles", p.homeTiles).apply()
 }
 

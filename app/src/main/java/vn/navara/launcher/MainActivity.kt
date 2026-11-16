@@ -333,6 +333,9 @@ fun Root(applyBars: (Boolean) -> Unit) {
         TrafficAlert.start(ctx)
     }
     LaunchedEffect(prefs.trafficAlert) { TrafficAlert.enabled = prefs.trafficAlert }
+    // Hồ sơ xe: gán ngay trong lúc dựng giao diện để mọi trang đọc cùng một hồ sơ; lớp OBD đổi bảng tỉ số hộp số
+    Vehicles.current = Vehicles.byId(prefs.vehicle)
+    LaunchedEffect(prefs.vehicle) { ObdManager.applyProfile(Vehicles.byId(prefs.vehicle)) }
     LaunchedEffect(prefs.loadSource) { ObdManager.loadSource = prefs.loadSource }
     LaunchedEffect(prefs.gearTrim) { ObdManager.gearTrim = prefs.gearTrim }
     LaunchedEffect(prefs.obdSource) { ObdManager.restart(ctx, prefs.obdSource) }

@@ -162,7 +162,14 @@ val HOME_METRICS = listOf(
     HomeMetric("fuelLevel", "MỨC NHIÊN LIỆU", "%", 0),
     HomeMetric("ambient", "NHIỆT ĐỘ NGOÀI", "°C", 0),
     HomeMetric("throttle", "BƯỚM GA", "%", 0),
+    HomeMetric("timing", "ĐÁNH LỬA SỚM", "°", 1),
+    HomeMetric("stft", "NHIÊN LIỆU NGẮN HẠN", "%", 1),
+    HomeMetric("ltft", "NHIÊN LIỆU DÀI HẠN", "%", 1),
+    HomeMetric("catTemp", "NHIỆT ĐỘ XÚC TÁC", "°C", 0, 850f),
 )
+
+// Thông số phù hợp với xe đang chọn (ví dụ xe hút khí tự nhiên không có boost, xe dầu không có hiệu chỉnh nhiên liệu xăng)
+fun homePool(v: VehicleProfile): List<HomeMetric> = HOME_METRICS.filter { it.key !in v.homeHide }
 
 val HOME_DEFAULT_TILES = listOf("rpm", "load", "coolant", "boost", "iat", "volt")
 
@@ -205,6 +212,8 @@ fun homeIcon(key: String): ImageVector = when (key) {
     "maf" -> Icons.Filled.Air
     "fuelRate", "lper100", "fuelLevel" -> Icons.Filled.LocalGasStation
     "ambient" -> Icons.Filled.WbSunny
+    "timing" -> Icons.Filled.FlashOn
+    "catTemp" -> Icons.Filled.Thermostat
     else -> Icons.Filled.Tune
 }
 
@@ -295,10 +304,11 @@ fun CarImage(modifier: Modifier, edge: Float) {
     val t = LocalTheme.current
     val ctx = LocalContext.current
     val mode = t.p.carImg
+    val prof = Vehicles.byId(t.p.vehicle)   // ảnh và hình vector theo hồ sơ xe đang chọn
     val custom by produceState<ImageBitmap?>(null, t.p.carVer) { value = withContext(Dispatchers.IO) { loadCar(ctx) } }
     when (mode) {
-        2 -> Canvas(modifier) { drawPickup(t.blueLight, t.accent, wire = true) }
-        3 -> Canvas(modifier) { drawPickup(t.blue, t.accent, wire = false) }
+        2 -> Canvas(modifier) { drawPickup(t.blueLight, t.accent, wire = true, sedan = prof.sedan) }
+        3 -> Canvas(modifier) { drawPickup(t.blue, t.accent, wire = false, sedan = prof.sedan) }
         else -> {
             val fade = modifier.graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen).drawWithContent {
                 drawContent()
@@ -310,24 +320,31 @@ fun CarImage(modifier: Modifier, edge: Float) {
             }
             val c = custom
             if (mode == 1 && c != null) Image(c, null, fade, contentScale = ContentScale.Fit)
-            else Image(painterResource(R.drawable.navara_photo), null, fade, contentScale = ContentScale.Fit)
+            else if (prof.photo != null) Image(painterResource(prof.photo), null, fade, contentScale = ContentScale.Fit)
+            else Canvas(modifier) { drawPickup(t.blue, t.accent, wire = false, sedan = prof.sedan) }   // hồ sơ chung chưa có ảnh: hình vector
         }
     }
 }
 
 // Xe bán tải nhìn ngang, vẽ trong khung 200 x 80 rồi co giãn vừa ô. wire = true: khung dây có ánh sáng; false: bóng đặc.
-private fun DrawScope.drawPickup(body: Color, glow: Color, wire: Boolean) {
+private fun DrawScope.drawPickup(body: Color, glow: Color, wire: Boolean, sedan: Boolean = false) {
     val s = min(size.width / 200f, size.height / 80f) * 0.94f
     val ox = (size.width - 200f * s) / 2f
     val oy = (size.height - 80f * s) / 2f
     val shell = Path().apply {
-        moveTo(8f, 54f); lineTo(8f, 35f); lineTo(88f, 35f); lineTo(97f, 17f); lineTo(132f, 12f)
-        lineTo(150f, 32f); lineTo(184f, 36f); lineTo(194f, 43f); lineTo(194f, 54f); close()
+        if (sedan) {   // sedan: nắp cabin liền, đuôi ngắn
+            moveTo(6f, 56f); lineTo(10f, 46f); lineTo(44f, 40f); lineTo(70f, 22f); lineTo(130f, 20f)
+            lineTo(158f, 38f); lineTo(190f, 44f); lineTo(196f, 56f); close()
+        } else {       // bán tải: thùng sau và cabin
+            moveTo(8f, 54f); lineTo(8f, 35f); lineTo(88f, 35f); lineTo(97f, 17f); lineTo(132f, 12f)
+            lineTo(150f, 32f); lineTo(184f, 36f); lineTo(194f, 43f); lineTo(194f, 54f); close()
+        }
     }
     val glass = Path().apply {
-        moveTo(101f, 20f); lineTo(128f, 16f); lineTo(142f, 31f); lineTo(99f, 31f); close()
+        if (sedan) { moveTo(76f, 26f); lineTo(126f, 24f); lineTo(148f, 38f); lineTo(66f, 39f); close() }
+        else { moveTo(101f, 20f); lineTo(128f, 16f); lineTo(142f, 31f); lineTo(99f, 31f); close() }
     }
-    val wheels = listOf(Offset(48f, 56f), Offset(154f, 56f))
+    val wheels = if (sedan) listOf(Offset(46f, 58f), Offset(152f, 58f)) else listOf(Offset(48f, 56f), Offset(154f, 56f))
     withTransform({ translate(ox, oy); scale(s, s, Offset.Zero) }) {
         if (wire) {
             drawPath(shell, glow.copy(alpha = 0.22f), style = Stroke(7f, cap = StrokeCap.Round, join = StrokeJoin.Round))

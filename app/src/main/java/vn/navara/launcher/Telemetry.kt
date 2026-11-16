@@ -70,6 +70,10 @@ private val TILES = listOf(
     Tile("baro", "BARO", "kPa", 0, 80f, 110f),
     Tile("ambient", "AMBIENT", "°C", 0, 0f, 50f),
     Tile("timing", "TIMING", "°", 1, -10f, 30f),
+    Tile("stft", "FUEL TRIM S", "%", 1, -25f, 25f),
+    Tile("ltft", "FUEL TRIM L", "%", 1, -25f, 25f),
+    Tile("catTemp", "CATALYST", "°C", 0, 200f, 900f, 850f),
+    Tile("lambda", "LAMBDA", "", 2, 0.7f, 1.3f),
     Tile("egr", "EGR", "%", 0, 0f, 100f),
     Tile("fuelLevel", "FUEL TANK", "%", 0, 0f, 100f),
     Tile("odo", "ODO", "km", 0, 0f, 0f),
@@ -100,7 +104,7 @@ private val DEFAULT_ON = setOf(
 
 // "" = mặc định, "-" = tắt hết, còn lại là danh sách khoá phân cách bằng dấu phẩy
 private fun enabledKeys(s: String): Set<String> = when {
-    s.isBlank() -> DEFAULT_ON
+    s.isBlank() -> (DEFAULT_ON - Vehicles.current.obdHide) + Vehicles.current.obdAdd
     s == "-" -> emptySet()
     else -> s.split(",").filter { it.isNotBlank() }.toSet()
 }
@@ -143,7 +147,8 @@ private fun TelemetryBody(obd: ObdData, nav: Nav, update: (UiPrefs) -> Unit, dig
     }
     val enabled = enabledKeys(t.p.obdTiles)
     var picking by remember { mutableStateOf(false) }
-    val tiles = TILES.filter { it.key in enabled && valueOf(obd, it.key) != null }
+    val shown = TILES.filter { it.key !in Vehicles.current.obdHide }   // thông số không phù hợp với xe đang chọn thì ẩn hẳn
+    val tiles = shown.filter { it.key in enabled && valueOf(obd, it.key) != null }
     val off = t.ink.copy(alpha = 0.09f)
 
     Box(Modifier.fillMaxSize()) {
@@ -227,7 +232,7 @@ private fun TelemetryBody(obd: ObdData, nav: Nav, update: (UiPrefs) -> Unit, dig
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("Chọn thông số hiển thị", color = t.ink, fontSize = 22.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-                    PickBtn("Hiện tất cả") { update(t.p.copy(obdTiles = keysToPref(TILES.map { it.key }.toSet()))) }
+                    PickBtn("Hiện tất cả") { update(t.p.copy(obdTiles = keysToPref(shown.map { it.key }.toSet()))) }
                     Spacer(Modifier.width(8.dp))
                     PickBtn("Mặc định") { update(t.p.copy(obdTiles = "")) }
                     Spacer(Modifier.width(8.dp))
@@ -240,7 +245,7 @@ private fun TelemetryBody(obd: ObdData, nav: Nav, update: (UiPrefs) -> Unit, dig
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                     modifier = Modifier.weight(1f).fillMaxWidth()
                 ) {
-                    items(TILES, key = { it.key }) { tl ->
+                    items(shown, key = { it.key }) { tl ->
                         val on = tl.key in enabled
                         val has = valueOf(obd, tl.key) != null
                         Box(
@@ -285,7 +290,7 @@ private fun ShiftBar(rpm: Int) {
         val n = 36
         val gap = 3.dp.toPx()
         val w = (size.width - gap * (n - 1)) / n
-        val lit = (rpm.toFloat() / 5000f * n).toInt().coerceIn(0, n)
+        val lit = (rpm.toFloat() / Vehicles.current.barMax.toFloat() * n).toInt().coerceIn(0, n)
         for (i in 0 until n) {
             val col = if (i >= lit) off else orange   // cùng màu với chữ số vòng tua
             drawRoundRect(col, Offset(i * (w + gap), 0f), Size(w, size.height), CornerRadius(2.dp.toPx()))

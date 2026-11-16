@@ -310,6 +310,26 @@ fun SettingsScreen(
                     tg("Ẩn thanh trạng thái hệ thống", p.hideBar) { onChange(p.copy(hideBar = it)) }
                 }
 
+                Group("Hồ sơ xe") {
+                    val cur = Vehicles.byId(p.vehicle)
+                    for (v in Vehicles.all) {
+                        val sel = v.id == cur.id
+                        line(v.title, v.spec) {
+                            if (sel) Text("Đang dùng", color = t.accent, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                            else Btn("Chọn") {
+                                // Áp dụng hồ sơ: giao diện, ảnh xe, 6 ô thông số, thông số ở trang OBD và bảng tỉ số hộp số
+                                onChange(p.copy(vehicle = v.id, skin = v.skin, homeTiles = v.homeTiles, carImg = 0, homeOffsets = "", obdTiles = "", gearTrim = 2))
+                            }
+                        }
+                    }
+                    note(
+                        "Chọn đúng xe của bạn để ứng dụng đổi giao diện, ảnh xe, thông số trang 1 và trang OBD, danh sách PID được đọc và bảng tỉ số hộp số tính cấp số. " +
+                            "Sau khi chọn, bạn vẫn chỉnh lại từng phần ở các mục bên dưới."
+                    )
+                    if (!cur.ratiosVerified) note("Lưu ý: tỉ số hộp số của " + cur.title + " là ước tính. Nếu số hiển thị sai, dùng Hiệu chỉnh cấp số ở mục OBD hoặc báo mình để chỉnh bảng tỉ số cho khớp xe thật.")
+                    if (cur.gearRatios.isEmpty()) note("Hồ sơ chung không có bảng tỉ số, nên chỉ hiện cấp số khi xe tự báo qua OBD.")
+                }
+
                 Group("Hình nền và khung") {
                     choice(
                         "Hình nền", listOf("Đen trơn", "Địa hình", "Chuyển màu", "Ảnh của bạn"), p.bgStyle,
@@ -347,9 +367,10 @@ fun SettingsScreen(
                     ) { onChange(p.copy(gearStyle = it)) }
                     val slots = parseHomeTiles(p.homeTiles)
                     val slotNames = listOf("Ô trái trên", "Ô trái giữa", "Ô trái dưới", "Ô phải trên", "Ô phải giữa", "Ô phải dưới")
+                    val pool = homePool(Vehicles.byId(p.vehicle))
                     fun setSlot(i: Int, d: Int) {
-                        val cur = HOME_METRICS.indexOfFirst { it.key == slots[i] }.coerceAtLeast(0)
-                        val nk = HOME_METRICS[(cur + d + HOME_METRICS.size) % HOME_METRICS.size].key
+                        val cur = pool.indexOfFirst { it.key == slots[i] }.coerceAtLeast(0)
+                        val nk = pool[(cur + d + pool.size) % pool.size].key
                         onChange(p.copy(homeTiles = slots.toMutableList().also { it[i] = nk }.joinToString(",")))
                     }
                     slots.forEachIndexed { i, k ->

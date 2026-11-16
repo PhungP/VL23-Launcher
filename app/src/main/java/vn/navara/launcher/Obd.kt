@@ -85,6 +85,11 @@ private val PIDS = listOf(
     Pid("45", "relThrottle", 1) { it[0] * 100f / 255f },
     Pid("5D", "injTiming", 2) { u16(it) / 128f - 210f },
     Pid("0A", "fuelPress", 1) { it[0] * 3f },
+    // PID của xe xăng: hiệu chỉnh nhiên liệu ngắn/dài hạn, nhiệt độ bộ xúc tác, hệ số lambda lệnh
+    Pid("06", "stft", 1) { (it[0] - 128) * 100f / 128f },
+    Pid("07", "ltft", 1) { (it[0] - 128) * 100f / 128f },
+    Pid("3C", "catTemp", 2) { u16(it) / 10f - 40f },
+    Pid("44", "lambda", 2) { u16(it) * 2f / 65536f },
     Pid("01", "status", 1) { it[0].toFloat() },
 )
 
@@ -111,15 +116,24 @@ object ObdManager {
     // ---- Số đang cài ----
     // Hộp số tự động 7 cấp Navara NP300 (tỉ số theo tài liệu Nissan), cầu 3.357. Chu vi lốp 255/60R18 ~ 2.398 m.
     // Nếu lắp lốp khác, sửa TIRE_M (mét) cho khớp thì số hiển thị mới chuẩn.
-    private val GEAR = doubleArrayOf(4.886, 3.169, 2.027, 1.411, 1.000, 0.864, 0.774)
-    private const val FINAL_DRIVE = 3.357
-    private const val TIRE_M = 2.398
+    // Bảng tỉ số, cầu cuối và chu vi lốp lấy từ hồ sơ xe đang chọn (Cài đặt > Hồ sơ xe)
+    @Volatile private var prof: VehicleProfile = Vehicles.current
+    private val GEAR: DoubleArray get() = prof.gearRatios
+    private val FINAL_DRIVE: Double get() = prof.finalDrive
+    private val TIRE_M: Double get() = prof.tireM
     private var a4Fail = 0          // số lần PID 01A4 (số thực tế theo chuẩn J1979) không có phản hồi
     private var hwGear: Int? = null // số đọc trực tiếp từ xe qua PID 01A4 (nếu xe hỗ trợ)
     private var gCand: Int? = null
     private var gCnt = 0
 
     private fun st(m: String) = _data.update { it.copy(status = m) }
+
+    // Đổi sang hồ sơ xe khác: dùng bảng tỉ số mới, bỏ kết quả cấp số cũ để tính lại từ đầu
+    fun applyProfile(p: VehicleProfile) {
+        prof = p
+        hwGear = null; a4Fail = 0; gCand = null; gCnt = 0; kEma = 0.0
+        _data.update { it.copy(gear = null, gearEst = true) }
+    }
 
     fun restart(ctx: Context, src: Int) {
         job?.cancel()
@@ -292,7 +306,7 @@ object ObdManager {
         while (true) {
             val lp = loadPid(sup)
             val core = listOf("0C", "0D", "0B", lp)
-            val rest = PIDS.filter { it.pid in sup && it.pid !in core }
+            val rest = PIDS.filter { it.pid in sup && it.pid !in core && it.pid !in prof.skipPids }
             // Vòng tua + tốc độ được hỏi MỖI vòng (để số đang cài cập nhật nhanh); boost và tải động cơ luân phiên;
             // các thông số khác cứ 3 vòng hỏi một lần. Mỗi vòng chỉ 3 đến 4 lệnh thay vì 5 như trước.
             val list = ArrayList<Pid>()
@@ -377,6 +391,7 @@ object ObdManager {
             _data.update { it.copy(gear = hw, gearEst = false) }
             return
         }
+        if (GEAR.isEmpty()) return   // hồ sơ chung không có bảng tỉ số: chỉ dùng số đọc trực tiếp từ xe (nếu có)
         val now = android.os.SystemClock.elapsedRealtime()
         val d = _data.value
         val spd = speedForGear(d)
@@ -385,7 +400,7 @@ object ObdManager {
             kEma = if (kEma <= 0.0) k else kEma * 0.4 + k * 0.6
             var best = 1
             var bestErr = 9.0
-            for (g in 1..7) {
+            for (g in 1..GEAR.size) {
                 val e = gearErr(kEma, g)
                 if (e < bestErr) { bestErr = e; best = g }
             }

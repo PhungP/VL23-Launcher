@@ -47,8 +47,8 @@ import kotlin.math.cos
 import kotlin.math.roundToInt
 import kotlin.math.sin
 
-private const val RPM_MAX = 6000
-private const val RPM_RED = 4500      // vùng đỏ trên đồng hồ vòng tua (theo mặt đồng hồ xe: đỏ từ khoảng 4500)
+private val RPM_MAX: Int get() = Vehicles.current.rpmMax      // thang đồng hồ vòng tua theo hồ sơ xe
+private val RPM_RED: Int get() = Vehicles.current.rpmRed      // vùng đỏ theo hồ sơ xe (Navara đỏ từ khoảng 4500)
 private const val ARC_START = 150f    // cung 240 độ, hở phía dưới: bắt đầu ở góc dưới bên trái
 private const val ARC_SWEEP = 240f
 
