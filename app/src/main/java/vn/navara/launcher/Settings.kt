@@ -444,7 +444,7 @@ fun SettingsScreen(
                 }
 
                 Group("Bản đồ") {
-                    choice("Công cụ bản đồ", listOf("MapLibre + MapTiler", "OSM đơn giản", "Google Maps"), p.mapEngine) { onChange(p.copy(mapEngine = it)) }
+                    choice("Công cụ bản đồ", listOf("MapLibre + MapTiler", "OSM đơn giản", "Google Maps", "MapLibre + Goong"), p.mapEngine) { onChange(p.copy(mapEngine = it)) }
                     if (p.mapEngine == 2) {
                         note(
                             "Google Maps dùng khoá API của bạn (tạo tại console.cloud.google.com): bật \"Maps JavaScript API\" và thanh toán cho dự án. " +
@@ -454,6 +454,19 @@ fun SettingsScreen(
                         full { bg -> Line(bg, "Khoá API Google Maps") { Box(Modifier.width(300.dp)) { KeyField(p.googleKey, "Dán khoá API Google Maps vào đây") { onChange(p.copy(googleKey = it)) } } } }
                         tg("Hiện lớp giao thông", p.mapTraffic) { onChange(p.copy(mapTraffic = it)) }
                     }
+                    if (p.mapEngine == 3) {
+                        note(
+                            "Goong cần hai khoá riêng, tạo tại account.goong.io/keys: \"Maptiles Key\" để vẽ bản đồ và \"API Key\" để tìm địa điểm và chỉ đường. " +
+                                "Nếu chỉ nhập khoá Maptiles thì bản đồ vẫn hiện và dẫn đường dùng tạm Nominatim + OSRM. Mỗi khoá Goong có hạn mức theo ngày; " +
+                                "khoá chỉ lưu trên máy bạn."
+                        )
+                        full { bg -> Line(bg, "Khoá Maptiles Goong") { Box(Modifier.width(300.dp)) { KeyField(p.goongMapKey, "Dán Maptiles Key của Goong vào đây") { onChange(p.copy(goongMapKey = it)) } } } }
+                        full { bg -> Line(bg, "Khoá API Goong") { Box(Modifier.width(300.dp)) { KeyField(p.goongApiKey, "Dán API Key của Goong vào đây") { onChange(p.copy(goongApiKey = it)) } } } }
+                        choice(
+                            "Kiểu bản đồ Goong", listOf("Đường phố", "Sáng", "Dẫn đường"), p.mapTheme,
+                            "Đường phố: đầy đủ địa điểm. Sáng: nền nhạt gọn. Dẫn đường: nền tối giản dành cho lái xe (tự đổi ngày/đêm theo Màu bản đồ)."
+                        ) { onChange(p.copy(mapTheme = it)) }
+                    } else {
                     note(
                         "Khoá MapTiler miễn phí tạo tại cloud.maptiler.com (gói Free: dùng phi thương mại, khoảng 100 nghìn lượt tải mỗi tháng, bắt buộc hiện logo MapTiler). " +
                             "Để trống thì dùng khoá khai báo lúc build; không có khoá app tự dùng bản đồ OSM đơn giản."
@@ -463,13 +476,14 @@ fun SettingsScreen(
                         "Kiểu bản đồ", listOf("Streets", "OpenStreetMap", "Bright"), p.mapTheme,
                         "Streets: nhiều đường và địa điểm. OpenStreetMap: giống bản đồ OSM chuẩn (chỉ có bản sáng, chế độ tối dùng Streets)."
                     ) { onChange(p.copy(mapTheme = it)) }
+                    }
                     tg("Bản đồ xoay theo hướng xe", p.mapHeadingUp) { onChange(p.copy(mapHeadingUp = it)) }
                     tg("Nghiêng 3D (nút 2D/3D)", p.mapTilt) { onChange(p.copy(mapTilt = it)) }
                     choice("Biểu tượng xe", listOf("Tam giác", "Xe bán tải"), if (p.mapMarker == 1) 0 else 1) { onChange(p.copy(mapMarker = if (it == 0) 1 else 0)) }
                     choice("Màu bản đồ", listOf("Theo giao diện", "Sáng", "Tối"), p.mapStyle) { onChange(p.copy(mapStyle = it)) }
                     tg("Đọc chỉ dẫn dẫn đường bằng giọng nói", p.navVoice) { onChange(p.copy(navVoice = it)) }
                     note(
-                        "Dẫn đường: chạm nút mũi tên ở cạnh phải trang Bản đồ, nhập điểm đến rồi chọn. Cần mạng và bản đồ MapLibre + MapTiler hoặc Google Maps. " +
+                        "Dẫn đường: chạm nút mũi tên ở cạnh phải trang Bản đồ, nhập điểm đến rồi chọn. Cần mạng và bản đồ MapLibre (MapTiler hoặc Goong) hoặc Google Maps. " +
                             "Giọng nói dùng bộ đọc tiếng Việt của máy (cần cài sẵn dữ liệu giọng tiếng Việt)."
                     )
                 }

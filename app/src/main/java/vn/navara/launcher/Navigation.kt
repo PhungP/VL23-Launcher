@@ -28,11 +28,16 @@ import kotlin.math.min
 // - Tính đường: OSRM (máy chủ demo công cộng, dữ liệu OpenStreetMap), chỉ dẫn từng chặng được dựng thành tiếng Việt ngay trong app
 // - Theo dõi xe bám tuyến, tự tính lại đường khi đi lệch, đọc chỉ dẫn bằng giọng nói của máy (nếu máy có tiếng Việt)
 // Máy chủ OSRM demo chỉ nên dùng cá nhân với lưu lượng nhỏ; nếu dùng nhiều, hãy đổi OSRM_BASE sang máy chủ định tuyến riêng.
+// Khi người dùng nhập khoá API Goong (Cài đặt > Bản đồ > MapLibre + Goong) thì tìm địa điểm và tính đường chuyển sang Goong:
+// - Tìm địa điểm: Goong Place AutoComplete, lấy toạ độ bằng Place Detail khi chọn một kết quả
+// - Tính đường: Goong Direction (polyline mã hoá, chỉ dẫn từng chặng tiếng Việt của Goong)
 
 private const val OSRM_BASE = "https://router.project-osrm.org/route/v1/driving/"
 private const val NOMINATIM = "https://nominatim.openstreetmap.org/search"
+private const val GOONG_API = "https://rsapi.goong.io/"
 
-data class Place(val name: String, val sub: String, val lat: Double, val lng: Double)
+// pid: mã địa điểm của Goong; kết quả tìm của Goong chưa có toạ độ (lat, lng = 0), sẽ lấy bằng Place Detail khi bắt đầu dẫn đường
+data class Place(val name: String, val sub: String, val lat: Double, val lng: Double, val pid: String = "")
 
 // kind: 0 mũi tên rẽ, 1 điểm đến, 2 vòng xuyến, 3 quay đầu. angle: 0 = thẳng, 90 = phải, -90 = trái.
 // startM: khoảng cách từ đầu tuyến tới nơi thực hiện chỉ dẫn này. major = false là các chặng "đi tiếp" không cần báo.
@@ -92,6 +97,21 @@ object Navigator {
     private var tts: TextToSpeech? = null
     @Volatile private var ttsOk = false
 
+    // Khoá API Goong; rỗng = dùng Nominatim + OSRM
+    @Volatile private var goongKey = ""
+    fun configure(goongApiKey: String) { goongKey = goongApiKey.trim() }
+    private fun useGoong() = goongKey.isNotEmpty()
+
+    // Thông báo lỗi dễ hiểu cho người dùng, nhất là khi khoá Goong sai hoặc hết hạn mức
+    private fun errText(e: Exception, def: String): String {
+        val m = e.message ?: ""
+        if (useGoong()) {
+            if (m.contains("HTTP 401") || m.contains("HTTP 403")) return "Goong từ chối khoá API. Kiểm tra lại \"Khoá API Goong\" (không phải khoá Maptiles)"
+            if (m.contains("HTTP 429")) return "Khoá Goong đã hết hạn mức hôm nay hoặc gọi quá nhanh"
+        }
+        return def
+    }
+
     private fun enc(s: String) = URLEncoder.encode(s, "UTF-8")
 
     // ---------- Tìm địa điểm ----------
@@ -109,6 +129,11 @@ object Navigator {
         _state.update { it.copy(searching = true, message = null, results = emptyList()) }
         searchJob = scope.launch {
             try {
+                if (useGoong()) {
+                    val out = goongSearch(q, near)
+                    _state.update { it.copy(searching = false, results = out, message = if (out.isEmpty()) "Không tìm thấy địa điểm này" else null) }
+                    return@launch
+                }
                 var url = NOMINATIM + "?format=jsonv2&limit=8&accept-language=vi&q=" + enc(q)
                 if (near != null) {
                     // ưu tiên (không bắt buộc) kết quả quanh vị trí xe
@@ -126,7 +151,7 @@ object Navigator {
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e
             } catch (e: Exception) {
-                _state.update { it.copy(searching = false, message = "Không tìm được, kiểm tra kết nối mạng") }
+                _state.update { it.copy(searching = false, message = errText(e, "Không tìm được, kiểm tra kết nối mạng")) }
             }
         }
     }
@@ -157,7 +182,8 @@ object Navigator {
             return
         }
         val app = ctx.applicationContext
-        addRecent(app, dest)
+        // Lấy lại lựa chọn hiện tại trong Cài đặt để chắc chắn dùng đúng dịch vụ (Goong hay OSRM)
+        loadPrefs(app).let { configure(if (it.mapEngine == 3) it.goongApiKey else "") }
         requestRoute(app, from, dest, true)
         // Theo dõi vị trí ngay trong Navigator nên vẫn dẫn đường khi người dùng chuyển sang trang khác
         trackJob?.cancel()
@@ -178,7 +204,9 @@ object Navigator {
         _state.update { it.copy(loading = true, message = null, results = emptyList()) }
         routeJob = scope.launch {
             try {
-                val r = fetchRoute(from.latitude, from.longitude, dest)
+                val d = resolvePlace(dest)
+                if (first) addRecent(ctx, d)
+                val r = if (useGoong()) fetchRouteGoong(from.latitude, from.longitude, d) else fetchRoute(from.latitude, from.longitude, d)
                 lastSeg = 0
                 farCount = 0
                 said.clear()
@@ -192,9 +220,126 @@ object Navigator {
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e
             } catch (e: Exception) {
-                _state.update { it.copy(loading = false, message = "Không tìm được đường đi, kiểm tra kết nối mạng") }
+                _state.update { it.copy(loading = false, message = errText(e, "Không tìm được đường đi, kiểm tra kết nối mạng")) }
             }
         }
+    }
+
+    // ---------- Goong: tìm địa điểm, lấy toạ độ, tính đường ----------
+    private fun goongSearch(q: String, near: Location?): List<Place> {
+        var url = GOONG_API + "place/autocomplete?api_key=" + enc(goongKey) + "&limit=8&input=" + enc(q)
+        if (near != null) url += "&location=" + near.latitude + "," + near.longitude   // ưu tiên kết quả gần xe
+        val j = JSONObject(httpGetText(url))
+        val arr = j.optJSONArray("predictions") ?: return emptyList()
+        val out = ArrayList<Place>()
+        for (i in 0 until arr.length()) {
+            val o = arr.getJSONObject(i)
+            val pid = o.optString("place_id")
+            if (pid.isBlank()) continue
+            val sf = o.optJSONObject("structured_formatting")
+            val desc = o.optString("description")
+            val nm = sf?.optString("main_text").orEmpty().ifBlank { desc.substringBefore(",") }
+            out.add(Place(nm, desc, 0.0, 0.0, pid))
+        }
+        return out
+    }
+
+    // Địa điểm của Goong chưa có toạ độ thì hỏi Place Detail (chỉ gọi một lần khi chọn điểm đến)
+    private fun resolvePlace(p: Place): Place {
+        if (p.pid.isEmpty() || (p.lat != 0.0 || p.lng != 0.0)) return p
+        val j = JSONObject(httpGetText(GOONG_API + "place/detail?api_key=" + enc(goongKey) + "&place_id=" + enc(p.pid)))
+        val loc = j.getJSONObject("result").getJSONObject("geometry").getJSONObject("location")
+        return p.copy(lat = loc.getDouble("lat"), lng = loc.getDouble("lng"))
+    }
+
+    // Giải mã polyline của Goong (định dạng Google, độ chính xác 5 chữ số thập phân) -> danh sách [vĩ độ, kinh độ]
+    private fun decodePolyline(s: String): ArrayList<DoubleArray> {
+        val out = ArrayList<DoubleArray>()
+        var i = 0
+        var lat = 0
+        var lng = 0
+        while (i < s.length) {
+            var shift = 0
+            var res = 0
+            var b: Int
+            do { b = s[i++].code - 63; res = res or ((b and 0x1f) shl shift); shift += 5 } while (b >= 0x20 && i < s.length)
+            lat += if (res and 1 != 0) (res shr 1).inv() else res shr 1
+            shift = 0
+            res = 0
+            do { b = s[i++].code - 63; res = res or ((b and 0x1f) shl shift); shift += 5 } while (b >= 0x20 && i < s.length)
+            lng += if (res and 1 != 0) (res shr 1).inv() else res shr 1
+            out.add(doubleArrayOf(lat / 1e5, lng / 1e5))
+        }
+        return out
+    }
+
+    private fun fetchRouteGoong(lat: Double, lng: Double, d: Place): NavRoute {
+        val url = GOONG_API + "direction?origin=" + lat + "," + lng + "&destination=" + d.lat + "," + d.lng +
+            "&vehicle=car&api_key=" + enc(goongKey)
+        val j = JSONObject(httpGetText(url))
+        val routes = j.optJSONArray("routes")
+        if (routes == null || routes.length() == 0) throw java.io.IOException("Không có đường đi")
+        val r = routes.getJSONObject(0)
+        val pts = decodePolyline(r.getJSONObject("overview_polyline").getString("points"))
+        if (pts.size < 2) throw java.io.IOException("Tuyến quá ngắn")
+        val cum = DoubleArray(pts.size)
+        for (i in 1 until pts.size) cum[i] = cum[i - 1] + dist(pts[i - 1], pts[i])
+        val total = cum[cum.size - 1]
+        val leg = r.getJSONArray("legs").getJSONObject(0)
+        val legDist = leg.optJSONObject("distance")?.optDouble("value", 0.0) ?: 0.0
+        val dur = leg.optJSONObject("duration")?.optDouble("value", 0.0) ?: 0.0
+        val k = if (legDist > 1.0) total / legDist else 1.0   // quy đổi mét của Goong sang mét đo dọc đường vẽ
+        val stepsJ = leg.optJSONArray("steps")
+        val steps = ArrayList<NavStep>()
+        var acc = 0.0
+        if (stepsJ != null) {
+            for (i in 0 until stepsJ.length()) {
+                val s = stepsJ.getJSONObject(i)
+                steps.add(makeGoongStep(s.optString("maneuver"), s.optString("html_instructions"), acc * k, i == 0))
+                acc += s.optJSONObject("distance")?.optDouble("value", 0.0) ?: 0.0
+            }
+        }
+        if (steps.isEmpty() || steps[steps.size - 1].kind != 1) steps.add(NavStep("Đến nơi", 0f, 1, total, true))
+        return NavRoute(pts, cum, steps, total, if (dur > 0.0) dur else total / 11.0, d)
+    }
+
+    private fun stripHtml(s: String): String =
+        android.text.Html.fromHtml(s, android.text.Html.FROM_HTML_MODE_LEGACY).toString().replace('\n', ' ').replace(Regex("\\s+"), " ").trim()
+
+    // Chỉ dẫn của Goong: lấy câu tiếng Việt Goong trả về, góc và loại mũi tên suy ra từ trường maneuver
+    private fun makeGoongStep(man: String, html: String, startM: Double, first: Boolean): NavStep {
+        val ang = when {
+            man.contains("uturn") -> 180f
+            man.contains("sharp-left") -> -135f
+            man.contains("sharp-right") -> 135f
+            man.contains("slight-left") || man.startsWith("ramp-left") || man.startsWith("fork-left") -> -45f
+            man.contains("slight-right") || man.startsWith("ramp-right") || man.startsWith("fork-right") -> 45f
+            man.endsWith("left") -> -90f
+            man.endsWith("right") -> 90f
+            else -> 0f
+        }
+        val kind = when {
+            man.contains("uturn") -> 3
+            man.startsWith("roundabout") -> 2
+            else -> 0
+        }
+        val fallback = when {
+            man.contains("uturn") -> "Quay đầu xe"
+            man.startsWith("roundabout") -> "Vào vòng xuyến"
+            man.contains("sharp-left") -> "Rẽ gắt sang trái"
+            man.contains("sharp-right") -> "Rẽ gắt sang phải"
+            man.contains("slight-left") -> "Chếch sang trái"
+            man.contains("slight-right") -> "Chếch sang phải"
+            man == "turn-left" || man.startsWith("ramp-left") || man.startsWith("fork-left") -> "Rẽ trái"
+            man == "turn-right" || man.startsWith("ramp-right") || man.startsWith("fork-right") -> "Rẽ phải"
+            man == "merge" -> "Nhập làn"
+            first -> "Xuất phát"
+            else -> "Đi tiếp"
+        }
+        val txt = stripHtml(html).ifBlank { fallback }
+        // Chặng đi thẳng / đi tiếp không cần báo; chặng đầu luôn hiện
+        val quiet = !first && (man.isBlank() || man == "straight")
+        return NavStep(txt, ang, kind, startM, !quiet)
     }
 
     // ---------- Tính đường (OSRM) ----------

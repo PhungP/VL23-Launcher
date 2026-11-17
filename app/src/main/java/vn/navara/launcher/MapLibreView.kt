@@ -45,7 +45,8 @@ import org.maplibre.android.style.layers.PropertyFactory
 import org.maplibre.android.style.layers.SymbolLayer
 import org.maplibre.android.style.sources.GeoJsonSource
 
-// Bản đồ vector MapLibre (mã nguồn mở, không phí SDK) dùng tile và style của MapTiler Cloud (dữ liệu OpenStreetMap, style riêng của MapTiler).
+// Bản đồ vector MapLibre (mã nguồn mở, không phí SDK) dùng tile và style của MapTiler Cloud (dữ liệu OpenStreetMap, style riêng của MapTiler)
+// hoặc của Goong (goong = true, dữ liệu bản đồ Việt Nam).
 // Xe vẫn được vẽ bằng Compose ở giữa màn hình; bản đồ chỉ nhận lệnh từ code (tắt mọi cử chỉ), nên vuốt đổi trang không bị nhầm.
 // Gói MapTiler miễn phí giới hạn dùng phi thương mại, bắt buộc hiện logo MapTiler và ghi nguồn OpenStreetMap trên bản đồ.
 private const val EMPTY = "{\"type\":\"FeatureCollection\",\"features\":[]}"
@@ -54,7 +55,7 @@ private const val EMPTY = "{\"type\":\"FeatureCollection\",\"features\":[]}"
 fun MapLibrePane(
     modifier: Modifier, loc: Location?, dark: Boolean, zoom: Int,
     pois: List<Poi>, headingUp: Boolean, marker: Int, key: String,
-    theme: Int = 0, tilt: Boolean = false
+    theme: Int = 0, tilt: Boolean = false, goong: Boolean = false
 ) {
     val ctx = LocalContext.current
     val dens = LocalDensity.current.density
@@ -117,12 +118,19 @@ fun MapLibrePane(
         theme == 2 -> if (dark) "bright-v2-dark" else "bright-v2"
         else -> if (dark) "streets-v2-dark" else "streets-v2"
     }
-    val styleUrl = "https://api.maptiler.com/maps/" + styleName + "/style.json?key=" + key
+    // Goong (key = khoá Maptiles của Goong): 0 Đường phố, 1 Sáng (không có bản tối nên dùng bản tối chung), 2 Dẫn đường (ngày/đêm)
+    val goongStyle = when (theme) {
+        1 -> if (dark) "goong_map_dark" else "goong_light_v2"
+        2 -> if (dark) "navigation_night" else "navigation_day"
+        else -> if (dark) "goong_map_dark" else "goong_map_web"
+    }
+    val styleUrl = if (goong) "https://tiles.goong.io/assets/" + goongStyle + ".json?api_key=" + key
+    else "https://api.maptiler.com/maps/" + styleName + "/style.json?key=" + key
     LaunchedEffect(map, styleUrl) {
         val m = map ?: return@LaunchedEffect
         styleReady = false
         m.setStyle(styleUrl) { style ->
-            tuneStyle(style, dark)
+            if (!goong) tuneStyle(style, dark)   // tuneStyle dựa trên cấu trúc OpenMapTiles của MapTiler, không áp dụng cho style Goong
             // Tuyến dẫn đường: viền trắng bên dưới, nét xanh dương bên trên; điểm đến chấm xanh lá
             style.addSource(GeoJsonSource("route-src", EMPTY))
             style.addLayer(
@@ -228,7 +236,7 @@ fun MapLibrePane(
         }
         if (slow) {
             Text(
-                "Đang tải bản đồ MapTiler… kiểm tra mạng hoặc khoá API",
+                if (goong) "Đang tải bản đồ Goong… kiểm tra mạng hoặc khoá Maptiles" else "Đang tải bản đồ MapTiler… kiểm tra mạng hoặc khoá API",
                 color = Color(0xFF8A94B0), fontSize = 16.sp,
                 modifier = Modifier.align(Alignment.Center).padding(top = 90.dp)
             )

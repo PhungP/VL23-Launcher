@@ -19,7 +19,7 @@ Launcher Android dành cho màn hình đầu máy trên ô tô (thiết kế cho
 - **Hình nền và khung:** hình nền đen, địa hình, chuyển màu hoặc ảnh riêng (không áp dụng cho trang 1); độ trong suốt khung 5 mức; hình khung vát góc, bo tròn, lục giác hoặc vuông.
 - **Biểu tượng ứng dụng:** bộ biểu tượng Navara đồng nhất, biểu tượng gốc một màu trắng, hoặc xanh kết hợp trắng theo tông đồng hồ xe.
 - **Trang thông số OBD:** lưới mọi thông số xe báo hỗ trợ, giá trị đỉnh, thanh báo sang số.
-- **Bản đồ:** chọn MapLibre + MapTiler (cảnh báo giới hạn tốc độ và camera), OSM đơn giản hoặc **Google Maps** (khoá API do người dùng nhập, có lớp giao thông); xoay theo hướng xe, nghiêng 3D; thanh dock trong suốt.
+- **Bản đồ:** chọn MapLibre + MapTiler (cảnh báo giới hạn tốc độ và camera), OSM đơn giản, **Google Maps** (khoá API do người dùng nhập, có lớp giao thông) hoặc **MapLibre + Goong** (người dùng nhập khoá Goong); xoay theo hướng xe, nghiêng 3D; thanh dock trong suốt.
 - **Dẫn đường:** tìm địa điểm, vẽ tuyến, chỉ dẫn rẽ bằng tiếng Việt, đọc bằng giọng nói, tự tính lại đường khi đi lệch.
 - **Nhạc:** tên bài, ảnh bìa, thông số âm thanh, hiệu ứng phổ và điều khiển trình phát đang chạy.
 - **Cập nhật trực tuyến:** kiểm tra và cài bản mới từ GitHub Releases ngay trong Cài đặt.
@@ -90,6 +90,14 @@ Launcher Android dành cho màn hình đầu máy trên ô tô (thiết kế cho
 ### 0.17
 - Trang 1: chọn màu chữ, màu viền các hộp và màu số cấp trong 8 màu (hoặc theo giao diện). Áp dụng cho thanh trên cùng, 6 ô thông số và cấp số.
 
+### 0.18
+- Google Maps: hiện thông báo "Đang tải" và nêu rõ lỗi do Google báo (ví dụ khoá sai loại, chưa bật Maps JavaScript API) thay vì để màn hình đen.
+
+### 0.19
+- Thêm công cụ bản đồ **MapLibre + Goong** (Cài đặt > Bản đồ > Công cụ bản đồ): vẽ bản đồ bằng style của Goong, tìm địa điểm bằng Goong Place và chỉ đường bằng Goong Direction, chỉ dẫn tiếng Việt của Goong. Người dùng tự nhập khoá Maptiles và khoá API của Goong.
+- Ba kiểu bản đồ Goong: Đường phố, Sáng, Dẫn đường (ngày/đêm). Chỉ nhập khoá Maptiles thì dẫn đường tạm dùng Nominatim + OSRM.
+- Thông báo rõ khi Goong từ chối khoá hoặc hết hạn mức.
+
 ## Cập nhật
 
 Vào **Cài đặt > Cập nhật ứng dụng**. Ứng dụng so sánh phiên bản đang cài với bản mới nhất trên GitHub Releases, tải file `.apk` đính kèm và gọi trình cài đặt của Android.
@@ -103,7 +111,7 @@ Quy tắc phát hành:
 Chọn **Cài đặt > Bản đồ > Công cụ bản đồ > Google Maps** rồi dán khoá API vào ô nhập. Khoá chỉ lưu trên máy, không đưa vào mã nguồn.
 
 Tạo khoá tại console.cloud.google.com:
-1. Bật **Maps JavaScript API** và bật thanh toán cho dự án (Google tính phí theo lượt tải bản đồ).
+1. Bật **Maps JavaScript API** (không phải Maps SDK for Android, hai API này tách biệt) và bật thanh toán cho dự án (Google tính phí theo lượt tải bản đồ).
 2. Đặt giới hạn ứng dụng cho khoá là **Websites** với `https://localhost/*`, hoặc không giới hạn. Khoá giới hạn "Android apps" không dùng được vì bản đồ chạy trong WebView.
 3. Giới hạn API của khoá chỉ gồm Maps JavaScript API.
 
@@ -114,6 +122,14 @@ Dữ liệu tìm địa điểm và tuyến đường vẫn lấy từ Nominatim
 - Bản đồ vector dùng MapLibre với tile của MapTiler Cloud (dữ liệu OpenStreetMap). Nhập khóa API MapTiler miễn phí trong **Cài đặt > Bản đồ**, hoặc khai báo `MAPTILER_KEY` trong `gradle.properties` khi build. Không có khóa thì app dùng bản đồ OSM đơn giản và không có dẫn đường.
 - Dẫn đường dùng Nominatim (tìm địa điểm) và máy chủ OSRM demo công cộng (tính đường). Cả hai chỉ phù hợp dùng cá nhân với lưu lượng nhỏ.
 - Giọng nói dùng bộ đọc tiếng Việt có sẵn của máy; cần cài dữ liệu giọng tiếng Việt cho Text-to-speech.
+
+## Goong
+
+Chọn **Cài đặt > Bản đồ > Công cụ bản đồ > MapLibre + Goong**. Tạo khoá tại account.goong.io/keys; Goong có hai loại khoá riêng:
+- **Maptiles Key:** dán vào ô "Khoá Maptiles Goong", dùng để vẽ bản đồ.
+- **API Key:** dán vào ô "Khoá API Goong", dùng để tìm địa điểm (Place AutoComplete và Place Detail) và tính đường (Direction).
+
+Khoá chỉ lưu trên máy, không đưa vào mã nguồn. Không nhập khoá API thì bản đồ vẫn hiện và dẫn đường dùng Nominatim + OSRM như cũ. Hạn mức gọi API tuỳ gói của tài khoản Goong; app tính lại đường tối đa mỗi 10 giây khi đi lệch.
 
 ## Thêm hồ sơ xe mới
 

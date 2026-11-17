@@ -50,7 +50,7 @@ data class UiPrefs(
     val pageOrder: String = "home,map,music,telemetry,apps",  // thứ tự các trang khi vuốt
     val obdTiles: String = "",         // thông số hiển thị ở trang theo dõi OBD: rỗng = mặc định, "-" = không hiện gì, hoặc danh sách khoá
     val loadSource: Int = 0,            // nguồn thanh engine load: 0 tự động, 1 tính toán, 2 chân ga, 3 mô-men
-    val mapEngine: Int = 0,             // công cụ bản đồ: 0 MapLibre + MapTiler (cần khoá), 1 OSM đơn giản, 2 Google Maps (cần khoá)
+    val mapEngine: Int = 0,             // công cụ bản đồ: 0 MapLibre + MapTiler (cần khoá), 1 OSM đơn giản, 2 Google Maps (cần khoá), 3 MapLibre + Goong (cần khoá)
     val mapTilerKey: String = "",       // khoá API MapTiler nhập trong Cài đặt (nếu trống dùng khoá khai báo lúc build)
     val gearTrim: Int = 2,              // hiệu chỉnh cấp số: 0..4 = -6%, -3%, 0, +3%, +6%
     val mapMarker: Int = 1,             // biểu tượng xe trên bản đồ: 0 xe bán tải, 1 tam giác (mặc định)
@@ -68,6 +68,8 @@ data class UiPrefs(
     val homeGear: Int = 0,              // màu số cấp ở trang 1
     val carPhoto: Int = 0,              // ảnh đang chọn trong danh sách ảnh của hồ sơ xe
     val googleKey: String = "",         // khoá API Google Maps do người dùng nhập
+    val goongMapKey: String = "",       // khoá Maptiles của Goong (vẽ bản đồ) do người dùng nhập
+    val goongApiKey: String = "",       // khoá API của Goong (tìm địa điểm, chỉ đường) do người dùng nhập
     val mapTraffic: Boolean = true,     // hiện lớp giao thông trên bản đồ Google
     val vehicle: String = "nissan_navara_2023_vl",   // hồ sơ xe đang chọn (Vehicles.kt)
     val glass: Int = 3,                 // độ trong suốt của khung/ô: 0 đặc ... 4 trong suốt hoàn toàn
@@ -106,7 +108,7 @@ fun loadPrefs(c: Context): UiPrefs {
         mapHeadingUp = s.getBoolean("mapHeadingUp", d.mapHeadingUp),
         pageOrder = (s.getString("pageOrder", null) ?: d.pageOrder).let { if (it == "home,telemetry,apps,map,music" || it == "home,apps,map,music,telemetry") d.pageOrder else it },  // thứ tự mặc định cũ -> mặc định mới
         loadSource = s.getInt("loadSource", d.loadSource).coerceIn(0, 3),
-        mapEngine = s.getInt("mapEngine", d.mapEngine).coerceIn(0, 2),
+        mapEngine = s.getInt("mapEngine", d.mapEngine).coerceIn(0, 3),
         mapTilerKey = s.getString("mapTilerKey", d.mapTilerKey) ?: d.mapTilerKey,
         gearTrim = s.getInt("gearTrim", d.gearTrim).coerceIn(0, 4),
         obdTiles = s.getString("obdTiles", d.obdTiles) ?: d.obdTiles,
@@ -124,6 +126,8 @@ fun loadPrefs(c: Context): UiPrefs {
         homeLine = s.getInt("homeLine", d.homeLine).coerceIn(0, HOME_COLORS.size),
         homeGear = s.getInt("homeGear", d.homeGear).coerceIn(0, HOME_COLORS.size),
         googleKey = s.getString("googleKey", d.googleKey) ?: d.googleKey,
+        goongMapKey = s.getString("goongMapKey", d.goongMapKey) ?: d.goongMapKey,
+        goongApiKey = s.getString("goongApiKey", d.goongApiKey) ?: d.goongApiKey,
         mapTraffic = s.getBoolean("mapTraffic", d.mapTraffic),
         frameShape = s.getInt("frameShape", d.frameShape).coerceIn(0, 3),
         homeOffsets = s.getString("homeOffsets", d.homeOffsets) ?: d.homeOffsets,
@@ -144,7 +148,7 @@ fun savePrefs(c: Context, p: UiPrefs) {
         .putBoolean("trafficAlert", p.trafficAlert).putBoolean("alertSound", p.alertSound).putInt("mapStyle", p.mapStyle).putBoolean("mapHeadingUp", p.mapHeadingUp).putInt("mapMarker", p.mapMarker)
         .putString("pageOrder", p.pageOrder).putInt("loadSource", p.loadSource).putString("obdTiles", p.obdTiles)
         .putInt("mapEngine", p.mapEngine).putString("mapTilerKey", p.mapTilerKey).putInt("gearTrim", p.gearTrim)
-        .putInt("skin", p.skin).putInt("mapTheme", p.mapTheme).putBoolean("mapTilt", p.mapTilt).putInt("homeLayout", p.homeLayout).putBoolean("navVoice", p.navVoice).putBoolean("iconBlue", p.iconBlue).putString("vehicle", p.vehicle).putInt("carPhoto", p.carPhoto).putInt("homeText", p.homeText).putInt("homeLine", p.homeLine).putInt("homeGear", p.homeGear).putString("googleKey", p.googleKey).putBoolean("mapTraffic", p.mapTraffic).putInt("glass", p.glass).putInt("frameShape", p.frameShape).putString("homeOffsets", p.homeOffsets)
+        .putInt("skin", p.skin).putInt("mapTheme", p.mapTheme).putBoolean("mapTilt", p.mapTilt).putInt("homeLayout", p.homeLayout).putBoolean("navVoice", p.navVoice).putBoolean("iconBlue", p.iconBlue).putString("vehicle", p.vehicle).putInt("carPhoto", p.carPhoto).putInt("homeText", p.homeText).putInt("homeLine", p.homeLine).putInt("homeGear", p.homeGear).putString("googleKey", p.googleKey).putString("goongMapKey", p.goongMapKey).putString("goongApiKey", p.goongApiKey).putBoolean("mapTraffic", p.mapTraffic).putInt("glass", p.glass).putInt("frameShape", p.frameShape).putString("homeOffsets", p.homeOffsets)
         .putInt("carImg", p.carImg).putInt("carVer", p.carVer).putInt("gearMode", p.gearStyle).putString("homeTiles", p.homeTiles).apply()
 }
 

@@ -97,6 +97,7 @@ fun GoogleMapPane(
     var ready by remember(apiKey, dark) { mutableStateOf(false) }
     var failed by remember(apiKey, dark) { mutableStateOf<String?>(null) }
     var web by remember(apiKey, dark) { mutableStateOf<WebView?>(null) }
+    var log by remember(apiKey, dark) { mutableStateOf("") }   // dòng lỗi cuối cùng Google báo (ví dụ ApiNotActivatedMapError)
     val ns by Navigator.state.collectAsState()
 
     // Hướng xe đã làm mượt (độ cộng dồn); đứng yên thì giữ hướng cuối
@@ -147,6 +148,15 @@ fun GoogleMapPane(
                             @JavascriptInterface fun fail(m: String) { ui.post { failed = m } }
                         }, "Android")
                         webViewClient = WebViewClient()
+                        // Bắt thông báo lỗi của Google Maps để hiện đúng nguyên nhân (khoá sai loại, chưa bật API, chưa bật thanh toán...)
+                        webChromeClient = object : android.webkit.WebChromeClient() {
+                            override fun onConsoleMessage(m: android.webkit.ConsoleMessage): Boolean {
+                                val txt = m.message()
+                                if (txt.contains("JavaScript API error") || txt.contains("MapError")) ui.post { log = txt.take(200); failed = "auth" }
+                                else if (m.messageLevel() == android.webkit.ConsoleMessage.MessageLevel.ERROR) ui.post { if (log.isEmpty()) log = txt.take(200) }
+                                return true
+                            }
+                        }
                         // Địa chỉ gốc giả để khoá giới hạn theo "Websites" (https://localhost/*) nhận được
                         loadDataWithBaseURL("https://localhost/", mapsHtml(apiKey, dark), "text/html", "utf-8", null)
                         web = this
@@ -154,9 +164,11 @@ fun GoogleMapPane(
                 },
                 onRelease = { it.destroy() }
             )
+            val detail = if (log.isNotBlank()) "\n\nChi tiết từ Google: " + log else ""
             val msg = when {
-                failed == "auth" -> "Google Maps từ chối khoá API.\nKiểm tra: đã bật Maps JavaScript API và thanh toán; khoá đặt giới hạn \"Websites\" với https://localhost/* hoặc không giới hạn (khoá giới hạn \"Android apps\" không dùng được)."
-                failed == "net" && !ready -> "Không tải được Google Maps.\nKiểm tra kết nối mạng và khoá API."
+                failed == "auth" -> "Google Maps từ chối khoá API.\nKhoá phải bật \"Maps JavaScript API\" (khác với Maps SDK for Android), bật thanh toán, và đặt giới hạn \"Websites\" với https://localhost/* hoặc không giới hạn." + detail
+                failed == "net" && !ready -> "Không tải được Google Maps.\nKiểm tra kết nối mạng và khoá API." + detail
+                !ready -> "Đang tải Google Maps…"
                 else -> null
             }
             if (msg != null) {
