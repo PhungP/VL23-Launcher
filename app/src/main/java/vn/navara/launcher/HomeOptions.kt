@@ -27,6 +27,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlin.math.roundToInt
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.width
@@ -300,7 +301,7 @@ fun saveCarImage(ctx: Context, uri: Uri) {
 
 // Hình xe ở giữa trang 1 theo lựa chọn trong Cài đặt. edge = phần giữa ảnh giữ nguyên, ngoài đó mờ dần hoà vào nền.
 @Composable
-fun CarImage(modifier: Modifier, edge: Float) {
+fun CarImage(modifier: Modifier, edge: Float, bleed: Boolean = false) {
     val t = LocalTheme.current
     val ctx = LocalContext.current
     val mode = t.p.carImg
@@ -319,8 +320,18 @@ fun CarImage(modifier: Modifier, edge: Float) {
                 )
             }
             val c = custom
+            val photos = prof.photos
+            val ph = if (photos.isEmpty()) null else photos[t.p.carPhoto.coerceAtLeast(0) % photos.size]
             if (mode == 1 && c != null) Image(c, null, fade, contentScale = ContentScale.Fit)
-            else if (prof.photo != null) Image(painterResource(prof.photo), null, fade, contentScale = ContentScale.Fit)
+            else if (ph != null && ph.scene && bleed) {
+                // Ảnh phong cảnh làm nền trang 1: phủ kín khung, thêm lớp tối nhẹ để chữ và ô thông số dễ đọc
+                Box(modifier) {
+                    Image(painterResource(ph.res), null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+                    Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0x66000000), Color(0x2E000000), Color(0x99000000)))))
+                }
+            }
+            else if (ph != null && ph.scene) Image(painterResource(ph.res), null, fade, contentScale = ContentScale.Crop)
+            else if (ph != null) Image(painterResource(ph.res), null, fade, contentScale = ContentScale.Fit)
             else Canvas(modifier) { drawPickup(t.blue, t.accent, wire = false, sedan = prof.sedan) }   // hồ sơ chung chưa có ảnh: hình vector
         }
     }
@@ -383,9 +394,9 @@ fun GearSport(gear: Int?, modifier: Modifier = Modifier) {
     val t = LocalTheme.current
     Box(modifier, contentAlignment = Alignment.Center) {
         Text(
-            gear?.toString() ?: "-", color = if (gear != null) t.glow else t.muted,
+            gear?.toString() ?: "-", color = if (gear != null) t.hGear else t.muted,
             fontSize = 84.sp, lineHeight = 84.sp, fontWeight = FontWeight.Black, fontStyle = FontStyle.Italic,
-            style = if (gear != null) TextStyle(shadow = Shadow(t.glow, Offset.Zero, 30f)) else TextStyle.Default
+            style = if (gear != null) TextStyle(shadow = Shadow(t.hGear, Offset.Zero, 30f)) else TextStyle.Default
         )
     }
 }
@@ -394,14 +405,14 @@ fun GearSport(gear: Int?, modifier: Modifier = Modifier) {
 @Composable
 fun GearBig(gear: Int?, modifier: Modifier = Modifier) {
     val t = LocalTheme.current
-    Box(modifier.panel(18.dp), contentAlignment = Alignment.Center) {
+    Box(modifier.panel(18.dp, line = t.homeLineC), contentAlignment = Alignment.Center) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("GEAR", color = t.label, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 2.sp)
+            Text("GEAR", color = t.hLabel, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 2.sp)
             Spacer(Modifier.width(14.dp))
             Text(
-                gear?.toString() ?: "-", color = if (gear != null) t.glow else t.muted,
+                gear?.toString() ?: "-", color = if (gear != null) t.hGear else t.muted,
                 fontSize = 42.sp, lineHeight = 44.sp, fontWeight = FontWeight.Bold,
-                style = if (gear != null) TextStyle(shadow = Shadow(t.glow, Offset.Zero, 26f)) else TextStyle.Default
+                style = if (gear != null) TextStyle(shadow = Shadow(t.hGear, Offset.Zero, 26f)) else TextStyle.Default
             )
         }
     }

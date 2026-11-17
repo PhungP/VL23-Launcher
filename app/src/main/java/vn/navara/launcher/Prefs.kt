@@ -50,7 +50,7 @@ data class UiPrefs(
     val pageOrder: String = "home,map,music,telemetry,apps",  // thứ tự các trang khi vuốt
     val obdTiles: String = "",         // thông số hiển thị ở trang theo dõi OBD: rỗng = mặc định, "-" = không hiện gì, hoặc danh sách khoá
     val loadSource: Int = 0,            // nguồn thanh engine load: 0 tự động, 1 tính toán, 2 chân ga, 3 mô-men
-    val mapEngine: Int = 0,             // công cụ bản đồ: 0 MapLibre + MapTiler (cần khoá), 1 OSM đơn giản
+    val mapEngine: Int = 0,             // công cụ bản đồ: 0 MapLibre + MapTiler (cần khoá), 1 OSM đơn giản, 2 Google Maps (cần khoá)
     val mapTilerKey: String = "",       // khoá API MapTiler nhập trong Cài đặt (nếu trống dùng khoá khai báo lúc build)
     val gearTrim: Int = 2,              // hiệu chỉnh cấp số: 0..4 = -6%, -3%, 0, +3%, +6%
     val mapMarker: Int = 1,             // biểu tượng xe trên bản đồ: 0 xe bán tải, 1 tam giác (mặc định)
@@ -63,6 +63,12 @@ data class UiPrefs(
     val carVer: Int = 0,                // tăng mỗi khi chọn ảnh xe riêng mới (để nạp lại ảnh)
     val gearStyle: Int = 0,             // cách hiện cấp số ở trang 1: 0 số thể thao, 1 ô cấp số
     val homeTiles: String = "rpm,load,coolant,boost,iat,volt",   // 6 ô thông số ở trang 1 (3 trái từ trên xuống, 3 phải từ trên xuống)
+    val homeText: Int = 0,              // màu chữ ở trang 1: 0 theo giao diện, 1..8 theo bảng HOME_COLORS
+    val homeLine: Int = 0,              // màu viền các hộp ở trang 1
+    val homeGear: Int = 0,              // màu số cấp ở trang 1
+    val carPhoto: Int = 0,              // ảnh đang chọn trong danh sách ảnh của hồ sơ xe
+    val googleKey: String = "",         // khoá API Google Maps do người dùng nhập
+    val mapTraffic: Boolean = true,     // hiện lớp giao thông trên bản đồ Google
     val vehicle: String = "nissan_navara_2023_vl",   // hồ sơ xe đang chọn (Vehicles.kt)
     val glass: Int = 3,                 // độ trong suốt của khung/ô: 0 đặc ... 4 trong suốt hoàn toàn
     val frameShape: Int = 0,            // hình khung: 0 vát góc, 1 bo tròn, 2 lục giác, 3 vuông
@@ -100,7 +106,7 @@ fun loadPrefs(c: Context): UiPrefs {
         mapHeadingUp = s.getBoolean("mapHeadingUp", d.mapHeadingUp),
         pageOrder = (s.getString("pageOrder", null) ?: d.pageOrder).let { if (it == "home,telemetry,apps,map,music" || it == "home,apps,map,music,telemetry") d.pageOrder else it },  // thứ tự mặc định cũ -> mặc định mới
         loadSource = s.getInt("loadSource", d.loadSource).coerceIn(0, 3),
-        mapEngine = s.getInt("mapEngine", d.mapEngine).coerceIn(0, 1),
+        mapEngine = s.getInt("mapEngine", d.mapEngine).coerceIn(0, 2),
         mapTilerKey = s.getString("mapTilerKey", d.mapTilerKey) ?: d.mapTilerKey,
         gearTrim = s.getInt("gearTrim", d.gearTrim).coerceIn(0, 4),
         obdTiles = s.getString("obdTiles", d.obdTiles) ?: d.obdTiles,
@@ -113,6 +119,12 @@ fun loadPrefs(c: Context): UiPrefs {
         iconBlue = s.getBoolean("iconBlue", d.iconBlue),
         glass = s.getInt("glass", d.glass).coerceIn(0, 4),
         vehicle = s.getString("vehicle", d.vehicle) ?: d.vehicle,
+        carPhoto = s.getInt("carPhoto", d.carPhoto).coerceAtLeast(0),
+        homeText = s.getInt("homeText", d.homeText).coerceIn(0, HOME_COLORS.size),
+        homeLine = s.getInt("homeLine", d.homeLine).coerceIn(0, HOME_COLORS.size),
+        homeGear = s.getInt("homeGear", d.homeGear).coerceIn(0, HOME_COLORS.size),
+        googleKey = s.getString("googleKey", d.googleKey) ?: d.googleKey,
+        mapTraffic = s.getBoolean("mapTraffic", d.mapTraffic),
         frameShape = s.getInt("frameShape", d.frameShape).coerceIn(0, 3),
         homeOffsets = s.getString("homeOffsets", d.homeOffsets) ?: d.homeOffsets,
         carImg = s.getInt("carImg", d.carImg).coerceIn(0, 3),
@@ -132,9 +144,15 @@ fun savePrefs(c: Context, p: UiPrefs) {
         .putBoolean("trafficAlert", p.trafficAlert).putBoolean("alertSound", p.alertSound).putInt("mapStyle", p.mapStyle).putBoolean("mapHeadingUp", p.mapHeadingUp).putInt("mapMarker", p.mapMarker)
         .putString("pageOrder", p.pageOrder).putInt("loadSource", p.loadSource).putString("obdTiles", p.obdTiles)
         .putInt("mapEngine", p.mapEngine).putString("mapTilerKey", p.mapTilerKey).putInt("gearTrim", p.gearTrim)
-        .putInt("skin", p.skin).putInt("mapTheme", p.mapTheme).putBoolean("mapTilt", p.mapTilt).putInt("homeLayout", p.homeLayout).putBoolean("navVoice", p.navVoice).putBoolean("iconBlue", p.iconBlue).putString("vehicle", p.vehicle).putInt("glass", p.glass).putInt("frameShape", p.frameShape).putString("homeOffsets", p.homeOffsets)
+        .putInt("skin", p.skin).putInt("mapTheme", p.mapTheme).putBoolean("mapTilt", p.mapTilt).putInt("homeLayout", p.homeLayout).putBoolean("navVoice", p.navVoice).putBoolean("iconBlue", p.iconBlue).putString("vehicle", p.vehicle).putInt("carPhoto", p.carPhoto).putInt("homeText", p.homeText).putInt("homeLine", p.homeLine).putInt("homeGear", p.homeGear).putString("googleKey", p.googleKey).putBoolean("mapTraffic", p.mapTraffic).putInt("glass", p.glass).putInt("frameShape", p.frameShape).putString("homeOffsets", p.homeOffsets)
         .putInt("carImg", p.carImg).putInt("carVer", p.carVer).putInt("gearMode", p.gearStyle).putString("homeTiles", p.homeTiles).apply()
 }
+
+// Bảng màu chọn cho chữ, viền và số cấp ở trang 1 (chỉ số 0 = theo giao diện)
+val HOME_COLORS = listOf(
+    Color(0xFFFFFFFF), Color(0xFF38B6FF), Color(0xFF00E5FF), Color(0xFF39FF88),
+    Color(0xFFFFD34D), Color(0xFFFF7A1A), Color(0xFFFF4D5E), Color(0xFFB26BFF)
+)
 
 // Bộ giao diện (p.skin): 0 = kiểu đồng hồ xe Navara (nền đen, dải xanh dương, chọn thì cam, viền xanh lá cho ô đặc biệt),
 // 1 = điện tử mặt đen chữ trắng, 2 = điện tử mặt trắng chữ đen (mono != 0),
@@ -176,6 +194,14 @@ class Theme(val p: UiPrefs, val bgImage: ImageBitmap?) {
     val panelG = panel.copy(alpha = panel.alpha * pa)
     val fillG = fill.map { it.copy(alpha = it.alpha * pa) }
     val frameFillG = frameFill.copy(alpha = frameFill.alpha * pa)
+    // Màu tuỳ chọn ở trang 1 (không chọn thì theo giao diện)
+    private val hText: Color? = if (p.homeText in 1..HOME_COLORS.size) HOME_COLORS[p.homeText - 1] else null
+    val hInk: Color = hText ?: ink
+    val hMuted: Color = hText?.copy(alpha = 0.7f) ?: muted
+    val hLabel: Color = hText?.copy(alpha = 0.8f) ?: label
+    val hIcon: Color = hText ?: blueLight
+    val homeLineC: Color? = if (p.homeLine in 1..HOME_COLORS.size) HOME_COLORS[p.homeLine - 1] else null
+    val hGear: Color = if (p.homeGear in 1..HOME_COLORS.size) HOME_COLORS[p.homeGear - 1] else glow
     val pageBg = when (kind) { 3 -> listOf(Color(0xFF1B2027), Color(0xFF07090C)); 4 -> listOf(Color(0xFF061B45), Color(0xFF010208)); else -> listOf(Color(0xFF06103A), Color(0xFF01030C)) }
     val scale = floatArrayOf(0.95f, 1.1f, 1.25f, 1.4f)[p.textSize.coerceIn(0, 3)]
     val iconDp = intArrayOf(52, 60, 72, 84)[p.iconSize.coerceIn(0, 3)]

@@ -152,26 +152,26 @@ fun HomeCluster(obd: ObdData, media: MediaInfo, onGrant: () -> Unit, nav: Nav) {
     ) {
         Column(Modifier.fillMaxSize().padding(start = 10.dp, top = 10.dp, end = 10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             // thanh trên
-            Box(Modifier.fillMaxWidth().height(66.dp).movable("top").panel(10.dp)) {
+            Box(Modifier.fillMaxWidth().height(66.dp).movable("top").panel(10.dp, line = t.homeLineC)) {
                 // giờ | thời tiết | la bàn (hướng xe đang đi) | ô đang phát
                 Row(Modifier.fillMaxSize().padding(start = 14.dp, end = 244.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text(clockText(), color = t.ink, fontSize = 48.sp, lineHeight = 48.sp, fontWeight = FontWeight.Bold)
+                    Text(clockText(), color = t.hInk, fontSize = 48.sp, lineHeight = 48.sp, fontWeight = FontWeight.Bold)
                     Spacer(Modifier.width(10.dp))
                     Column(Modifier.widthIn(max = 132.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(if (ww != null) weatherIcon(ww!!.code) else Icons.Filled.Cloud, null, tint = t.ink, modifier = Modifier.size(24.dp))
+                            Icon(if (ww != null) weatherIcon(ww!!.code) else Icons.Filled.Cloud, null, tint = t.hInk, modifier = Modifier.size(24.dp))
                             Spacer(Modifier.width(6.dp))
-                            Text(temp, color = t.ink, fontSize = 22.sp, lineHeight = 24.sp, fontWeight = FontWeight.SemiBold)
+                            Text(temp, color = t.hInk, fontSize = 22.sp, lineHeight = 24.sp, fontWeight = FontWeight.SemiBold)
                         }
-                        Text(line, color = t.muted, fontSize = 12.sp, lineHeight = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(line, color = t.hMuted, fontSize = 12.sp, lineHeight = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
                     Spacer(Modifier.weight(1f))
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Column {
-                            Text(headingLabel(heading), color = t.ink, fontSize = 20.sp, lineHeight = 22.sp, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
+                            Text(headingLabel(heading), color = t.hInk, fontSize = 20.sp, lineHeight = 22.sp, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
                             if (heading != null) {
                                 val d = (((heading % 360f) + 360f) % 360f).toInt()
-                                Text(String.format("%03d°", d), color = t.muted, fontSize = 12.sp, lineHeight = 13.sp)
+                                Text(String.format("%03d°", d), color = t.hMuted, fontSize = 12.sp, lineHeight = 13.sp)
                             }
                         }
                     }
@@ -223,23 +223,23 @@ private fun HomeSlot(key: String, obd: ObdData, modifier: Modifier, cutRight: Bo
 @Composable
 private fun ClusterTile(label: String, value: String, unit: String, modifier: Modifier, cutRight: Boolean, warn: Boolean = false, iconKey: String? = null) {
     val t = LocalTheme.current
-    Box(modifier.panel(10.dp, left = !cutRight, right = cutRight)) {
-        if (iconKey != null) HomeGlyph(iconKey, if (warn) t.accent else t.blueLight, Modifier.align(Alignment.TopStart).padding(start = 16.dp, top = 10.dp).size(24.dp))
+    Box(modifier.panel(10.dp, left = !cutRight, right = cutRight, line = t.homeLineC)) {
+        if (iconKey != null) HomeGlyph(iconKey, if (warn) t.accent else t.hIcon, Modifier.align(Alignment.TopStart).padding(start = 16.dp, top = 10.dp).size(24.dp))
         Text(
-            label, color = if (t.mono == 0) t.label else t.muted, fontSize = 11.sp, lineHeight = 12.sp, fontWeight = FontWeight.SemiBold,
+            label, color = if (t.mono == 0) t.hLabel else t.muted, fontSize = 11.sp, lineHeight = 12.sp, fontWeight = FontWeight.SemiBold,
             letterSpacing = 0.3.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center,
             modifier = Modifier.align(Alignment.TopCenter).padding(top = 8.dp, start = 44.dp, end = 12.dp)
         )
         Row(Modifier.align(Alignment.Center).padding(top = 10.dp), verticalAlignment = Alignment.Bottom) {
-            Text(value, color = if (warn) t.accent else t.ink, fontSize = 32.sp, lineHeight = 34.sp, fontWeight = FontWeight.Bold, maxLines = 1)
-            if (unit.isNotEmpty()) Text(unit, color = t.ink, fontSize = 13.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 3.dp, bottom = 4.dp))
+            Text(value, color = if (warn) t.accent else t.hInk, fontSize = 32.sp, lineHeight = 34.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+            if (unit.isNotEmpty()) Text(unit, color = t.hInk, fontSize = 13.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 3.dp, bottom = 4.dp))
         }
     }
 }
 
 // Hình xe ở giữa theo lựa chọn trong Cài đặt (ảnh Navara, ảnh riêng, khung dây, bóng xe)
 @Composable
-private fun CarPhoto(modifier: Modifier) = CarImage(modifier, 0.60f)
+private fun CarPhoto(modifier: Modifier) = CarImage(modifier, 0.60f, bleed = true)
 
 // Ô đang phát trong thanh trên: không viền; bấm vào để chuyển nhanh sang trang phát nhạc (chưa cấp quyền đọc nhạc thì mở cấp quyền)
 @Composable
@@ -258,17 +258,17 @@ private fun NowPlayingChip(media: MediaInfo, onGrant: () -> Unit, nav: Nav, modi
     ) {
         Box(Modifier.size(44.dp).clip(RoundedCornerShape(3.dp)), contentAlignment = Alignment.Center) {
             if (art != null) Image(art, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
-            else Icon(Icons.Filled.MusicNote, null, tint = t.ink, modifier = Modifier.size(26.dp))
+            else Icon(Icons.Filled.MusicNote, null, tint = t.hInk, modifier = Modifier.size(26.dp))
         }
         Spacer(Modifier.width(8.dp))
         Column(Modifier.weight(1f)) {
             when {
-                !media.hasAccess -> Text("Chạm để cấp quyền đọc nhạc", color = t.ink, fontSize = 14.sp, maxLines = 2)
-                media.title.isEmpty() -> Text("Chưa có nhạc đang phát", color = t.muted, fontSize = 15.sp, maxLines = 1)
+                !media.hasAccess -> Text("Chạm để cấp quyền đọc nhạc", color = t.hInk, fontSize = 14.sp, maxLines = 2)
+                media.title.isEmpty() -> Text("Chưa có nhạc đang phát", color = t.hMuted, fontSize = 15.sp, maxLines = 1)
                 else -> {
-                    Text(media.title, color = t.ink, fontSize = 17.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(media.title, color = t.hInk, fontSize = 17.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     val sub = listOf(media.artist, media.album).filter { it.isNotEmpty() }.joinToString(" • ")
-                    if (sub.isNotEmpty()) Text(sub, color = t.muted, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    if (sub.isNotEmpty()) Text(sub, color = t.hMuted, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
             }
         }

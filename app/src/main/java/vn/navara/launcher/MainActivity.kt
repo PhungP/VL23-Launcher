@@ -858,19 +858,26 @@ fun MapPage(obd: ObdData, nav: Nav, update: (UiPrefs) -> Unit) {
     val dockH = (3 + dockHeightDp(t.p.iconSize)).dp
     Box(Modifier.fillMaxSize()) {
             val mapKey = t.p.mapTilerKey.ifBlank { BuildConfig.MAPTILER_KEY }.trim()
-            if (t.p.mapEngine == 0 && mapKey.isNotBlank()) {
+            val gKey = t.p.googleKey.trim()
+            if (t.p.mapEngine == 2 && gKey.isNotBlank()) {
+                GoogleMapPane(Modifier.fillMaxSize(), l, mapDark, zoom, hu, t.p.mapTilt, gKey, t.p.mapTraffic)
+            } else if (t.p.mapEngine == 0 && mapKey.isNotBlank()) {
                 MapLibrePane(Modifier.fillMaxSize(), l, mapDark, zoom, if (on) tr.pois else emptyList(), hu, t.p.mapMarker, mapKey, t.p.mapTheme, t.p.mapTilt)
             } else {
                 MapPane(Modifier.fillMaxSize(), l, mapDark, zoom, 0.5f, if (on) tr.pois else emptyList(), hu, t.p.mapMarker)
-                if (t.p.mapEngine == 0) {
+                if (t.p.mapEngine != 1) {
                     MapChip(ovBg, Modifier.align(Alignment.BottomCenter).padding(bottom = dockH + 10.dp)) {
-                        Text("Chưa có khoá MapTiler (vào Cài đặt) – đang dùng bản đồ OSM đơn giản", color = ovInk, fontSize = 15.sp)
+                        Text(
+                            if (t.p.mapEngine == 2) "Chưa có khoá Google Maps (vào Cài đặt) – đang dùng bản đồ OSM đơn giản"
+                            else "Chưa có khoá MapTiler (vào Cài đặt) – đang dùng bản đồ OSM đơn giản",
+                            color = ovInk, fontSize = 15.sp
+                        )
                     }
                 }
             }
             Box(Modifier.fillMaxSize().padding(bottom = dockH)) {
             // Dẫn đường chỉ có trên bản đồ MapLibre (cần vẽ tuyến lên bản đồ vector)
-            val naviOk = t.p.mapEngine == 0 && mapKey.isNotBlank()
+            val naviOk = (t.p.mapEngine == 0 && mapKey.isNotBlank()) || (t.p.mapEngine == 2 && gKey.isNotBlank())
             // Nút zoom to; bản đồ không nhận thao tác chạm/kéo nên vuốt đổi trang không bị nhầm
             Column(Modifier.align(Alignment.CenterEnd).padding(10.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 if (naviOk) {

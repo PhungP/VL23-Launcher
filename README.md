@@ -13,12 +13,13 @@ Launcher Android dành cho màn hình đầu máy trên ô tô (thiết kế cho
   - Hình xe: ảnh Navara, ảnh riêng của bạn, khung dây hoặc bóng xe (vẽ vector).
   - 6 ô thông số: mỗi ô chọn trong 19 thông số (vòng tua, tải động cơ, nhiệt độ nước, boost, khí nạp, điện áp, chân ga, mô-men, công suất, EGT...), có biểu tượng riêng.
   - Cấp số: **Số thể thao** (một chữ số to, nghiêng) hoặc **Ô cấp số**.
+  - Màu chữ, màu viền hộp và màu số cấp chọn tự do trong 8 màu.
   - Kéo từng ô tới vị trí mong muốn (Cài đặt > Hình nền và khung > Di chuyển các ô ở trang 1).
 - **Giao diện:** ba bộ **Đồng hồ**, **Robot**, **SciFi**; chỉnh cỡ chữ, kích thước biểu tượng, thứ tự các trang.
 - **Hình nền và khung:** hình nền đen, địa hình, chuyển màu hoặc ảnh riêng (không áp dụng cho trang 1); độ trong suốt khung 5 mức; hình khung vát góc, bo tròn, lục giác hoặc vuông.
 - **Biểu tượng ứng dụng:** bộ biểu tượng Navara đồng nhất, biểu tượng gốc một màu trắng, hoặc xanh kết hợp trắng theo tông đồng hồ xe.
 - **Trang thông số OBD:** lưới mọi thông số xe báo hỗ trợ, giá trị đỉnh, thanh báo sang số.
-- **Bản đồ MapLibre:** bản đồ vector, xoay theo hướng xe, nghiêng 3D, cảnh báo giới hạn tốc độ và camera; thanh dock trong suốt.
+- **Bản đồ:** chọn MapLibre + MapTiler (cảnh báo giới hạn tốc độ và camera), OSM đơn giản hoặc **Google Maps** (khoá API do người dùng nhập, có lớp giao thông); xoay theo hướng xe, nghiêng 3D; thanh dock trong suốt.
 - **Dẫn đường:** tìm địa điểm, vẽ tuyến, chỉ dẫn rẽ bằng tiếng Việt, đọc bằng giọng nói, tự tính lại đường khi đi lệch.
 - **Nhạc:** tên bài, ảnh bìa, thông số âm thanh, hiệu ứng phổ và điều khiển trình phát đang chạy.
 - **Cập nhật trực tuyến:** kiểm tra và cài bản mới từ GitHub Releases ngay trong Cài đặt.
@@ -81,6 +82,14 @@ Launcher Android dành cho màn hình đầu máy trên ô tô (thiết kế cho
 - Cấp số được ước lượng theo bảng tỉ số của từng hồ sơ; lưu ý bảng của Accord là ước tính.
 - Thêm ảnh xe Honda Accord cho trang 1.
 
+### 0.16
+- Thêm công cụ bản đồ **Google Maps** (Cài đặt > Bản đồ): người dùng nhập khoá API của mình, có lớp giao thông, xoay theo hướng xe, nghiêng 3D và dẫn đường vẽ lên bản đồ Google. Chạy trong WebView nên không cần Google Play Services.
+- Hồ sơ xe có nhiều ảnh để chọn ở trang 1: Honda Accord (Đêm khói, Sa mạc, Núi bùn, Studio) và Nissan Navara (Mưa đêm, Sa mạc, Studio).
+- Ảnh phong cảnh phủ kín nền trang 1, có lớp tối nhẹ để chữ và ô thông số dễ đọc.
+
+### 0.17
+- Trang 1: chọn màu chữ, màu viền các hộp và màu số cấp trong 8 màu (hoặc theo giao diện). Áp dụng cho thanh trên cùng, 6 ô thông số và cấp số.
+
 ## Cập nhật
 
 Vào **Cài đặt > Cập nhật ứng dụng**. Ứng dụng so sánh phiên bản đang cài với bản mới nhất trên GitHub Releases, tải file `.apk` đính kèm và gọi trình cài đặt của Android.
@@ -88,6 +97,17 @@ Vào **Cài đặt > Cập nhật ứng dụng**. Ứng dụng so sánh phiên b
 Quy tắc phát hành:
 - Tạo Release có tag lớn hơn bản đang cài (ví dụ `v0.11`) và đính kèm một file `.apk`.
 - Mọi bản phải ký **cùng một khóa**, nếu không Android sẽ không cho cài đè.
+
+## Google Maps
+
+Chọn **Cài đặt > Bản đồ > Công cụ bản đồ > Google Maps** rồi dán khoá API vào ô nhập. Khoá chỉ lưu trên máy, không đưa vào mã nguồn.
+
+Tạo khoá tại console.cloud.google.com:
+1. Bật **Maps JavaScript API** và bật thanh toán cho dự án (Google tính phí theo lượt tải bản đồ).
+2. Đặt giới hạn ứng dụng cho khoá là **Websites** với `https://localhost/*`, hoặc không giới hạn. Khoá giới hạn "Android apps" không dùng được vì bản đồ chạy trong WebView.
+3. Giới hạn API của khoá chỉ gồm Maps JavaScript API.
+
+Dữ liệu tìm địa điểm và tuyến đường vẫn lấy từ Nominatim và OSRM, được vẽ đè lên bản đồ Google.
 
 ## Dẫn đường và bản đồ
 

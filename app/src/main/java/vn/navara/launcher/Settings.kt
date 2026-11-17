@@ -318,7 +318,7 @@ fun SettingsScreen(
                             if (sel) Text("Đang dùng", color = t.accent, fontSize = 18.sp, fontWeight = FontWeight.Bold)
                             else Btn("Chọn") {
                                 // Áp dụng hồ sơ: giao diện, ảnh xe, 6 ô thông số, thông số ở trang OBD và bảng tỉ số hộp số
-                                onChange(p.copy(vehicle = v.id, skin = v.skin, homeTiles = v.homeTiles, carImg = 0, homeOffsets = "", obdTiles = "", gearTrim = 2))
+                                onChange(p.copy(vehicle = v.id, skin = v.skin, homeTiles = v.homeTiles, carImg = 0, carPhoto = 0, homeOffsets = "", obdTiles = "", gearTrim = 2))
                             }
                         }
                     }
@@ -357,9 +357,20 @@ fun SettingsScreen(
 
                 Group("Trang 1: xe, thông số, cấp số") {
                     choice(
-                        "Hình xe", listOf("Ảnh Navara", "Ảnh riêng", "Khung dây", "Bóng xe"), p.carImg,
+                        "Hình xe", listOf("Ảnh hồ sơ", "Ảnh riêng", "Khung dây", "Bóng xe"), p.carImg,
                         "Ảnh riêng: chọn ảnh xe của bạn (nên dùng PNG nền trong suốt). Khung dây và Bóng xe là hình vẽ vector, hợp với giao diện Robot và SciFi."
                     ) { onChange(p.copy(carImg = it)) }
+                    full { bg -> Line(bg, "Màu chữ") { Swatches(p.homeText) { onChange(p.copy(homeText = it)) } } }
+                    full { bg -> Line(bg, "Màu viền hộp") { Swatches(p.homeLine) { onChange(p.copy(homeLine = it)) } } }
+                    full { bg -> Line(bg, "Màu số cấp") { Swatches(p.homeGear) { onChange(p.copy(homeGear = it)) } } }
+                    note("Chọn màu cho chữ, viền các hộp và số cấp ở trang 1. Ô tròn có chữ A là theo màu của giao diện đang dùng.")
+                    if (p.carImg == 0) {
+                        val photos = Vehicles.byId(p.vehicle).photos
+                        if (photos.size > 1) choice(
+                            "Ảnh của hồ sơ xe", photos.map { it.name }, p.carPhoto.coerceIn(0, photos.size - 1),
+                            "Ảnh phong cảnh phủ kín nền trang 1; ảnh Studio là xe rời đặt giữa."
+                        ) { onChange(p.copy(carPhoto = it)) }
+                    }
                     if (p.carImg == 1) line("Ảnh xe của bạn") { Btn("Chọn ảnh") { pickCar.launch("image/*") } }
                     choice(
                         "Hiển thị cấp số", listOf("Số thể thao", "Ô cấp số"), p.gearStyle,
@@ -433,7 +444,16 @@ fun SettingsScreen(
                 }
 
                 Group("Bản đồ") {
-                    choice("Công cụ bản đồ", listOf("MapLibre + MapTiler", "OSM đơn giản"), p.mapEngine) { onChange(p.copy(mapEngine = it)) }
+                    choice("Công cụ bản đồ", listOf("MapLibre + MapTiler", "OSM đơn giản", "Google Maps"), p.mapEngine) { onChange(p.copy(mapEngine = it)) }
+                    if (p.mapEngine == 2) {
+                        note(
+                            "Google Maps dùng khoá API của bạn (tạo tại console.cloud.google.com): bật \"Maps JavaScript API\" và thanh toán cho dự án. " +
+                                "Khoá phải để không giới hạn hoặc giới hạn theo \"Websites\" với https://localhost/* (khoá giới hạn \"Android apps\" không dùng được cho bản đồ này). " +
+                                "Mỗi lần mở bản đồ tính một lượt tải theo bảng giá của Google. Khoá chỉ lưu trên máy bạn."
+                        )
+                        full { bg -> Line(bg, "Khoá API Google Maps") { Box(Modifier.width(300.dp)) { KeyField(p.googleKey, "Dán khoá API Google Maps vào đây") { onChange(p.copy(googleKey = it)) } } } }
+                        tg("Hiện lớp giao thông", p.mapTraffic) { onChange(p.copy(mapTraffic = it)) }
+                    }
                     note(
                         "Khoá MapTiler miễn phí tạo tại cloud.maptiler.com (gói Free: dùng phi thương mại, khoảng 100 nghìn lượt tải mỗi tháng, bắt buộc hiện logo MapTiler). " +
                             "Để trống thì dùng khoá khai báo lúc build; không có khoá app tự dùng bản đồ OSM đơn giản."
@@ -449,7 +469,7 @@ fun SettingsScreen(
                     choice("Màu bản đồ", listOf("Theo giao diện", "Sáng", "Tối"), p.mapStyle) { onChange(p.copy(mapStyle = it)) }
                     tg("Đọc chỉ dẫn dẫn đường bằng giọng nói", p.navVoice) { onChange(p.copy(navVoice = it)) }
                     note(
-                        "Dẫn đường: chạm nút mũi tên ở cạnh phải trang Bản đồ, nhập điểm đến rồi chọn. Cần mạng và bản đồ MapLibre + MapTiler. " +
+                        "Dẫn đường: chạm nút mũi tên ở cạnh phải trang Bản đồ, nhập điểm đến rồi chọn. Cần mạng và bản đồ MapLibre + MapTiler hoặc Google Maps. " +
                             "Giọng nói dùng bộ đọc tiếng Việt của máy (cần cài sẵn dữ liệu giọng tiếng Việt)."
                     )
                 }
@@ -521,8 +541,25 @@ fun isDefaultHome(ctx: Context): Boolean {
     return ctx.packageManager.resolveActivity(i, PackageManager.MATCH_DEFAULT_ONLY)?.activityInfo?.packageName == ctx.packageName
 }
 
+// Hàng ô tròn chọn màu: ô đầu (chữ A) = theo giao diện, các ô sau lấy từ HOME_COLORS
 @Composable
-private fun KeyField(value: String, onChange: (String) -> Unit) {
+private fun Swatches(sel: Int, onSel: (Int) -> Unit) {
+    val t = LocalTheme.current
+    Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+        for (i in 0..HOME_COLORS.size) {
+            val c: Color? = if (i == 0) null else HOME_COLORS[i - 1]
+            Box(
+                Modifier.size(32.dp).clip(CircleShape).background(c ?: t.panelHi)
+                    .border(if (i == sel) px(3) else px(1), if (i == sel) t.accent else t.ink.copy(alpha = 0.5f), CircleShape)
+                    .clickable { onSel(i) },
+                contentAlignment = Alignment.Center
+            ) { if (i == 0) Text("A", color = t.ink, fontSize = 16.sp, fontWeight = FontWeight.Bold) }
+        }
+    }
+}
+
+@Composable
+private fun KeyField(value: String, hint: String = "Dán khoá API MapTiler vào đây", onChange: (String) -> Unit) {
     val t = LocalTheme.current
     var text by remember(value) { mutableStateOf(value) }
     BasicTextField(
@@ -533,7 +570,7 @@ private fun KeyField(value: String, onChange: (String) -> Unit) {
         cursorBrush = SolidColor(t.accent),
         modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(t.panelHi).padding(12.dp),
         decorationBox = { inner ->
-            if (text.isEmpty()) Text("Dán khoá API MapTiler vào đây", color = t.muted, fontSize = 18.sp)
+            if (text.isEmpty()) Text(hint, color = t.muted, fontSize = 18.sp)
             inner()
         }
     )
