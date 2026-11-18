@@ -25,6 +25,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.border
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.compose.foundation.clickable
@@ -102,6 +103,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
@@ -1083,20 +1085,30 @@ fun MusicPage(media: MediaInfo, onGrant: () -> Unit, nav: Nav) {
             }
             // ---- Phải: bài đang phát ----
             Column(Modifier.weight(1.05f).fillMaxHeight(), horizontalAlignment = Alignment.CenterHorizontally) {
-                Column(Modifier.fillMaxWidth()) {
+                // Khối thông tin bài hát chiếm phần chiều cao còn lại sau khi nút điều khiển, thanh tua và thời gian đã có chỗ.
+                // Tên bài, nghệ sĩ và album luôn một dòng, cỡ chữ cố định; dòng nào dài hơn khung thì chạy chữ (marquee) để đọc hết.
+                Column(Modifier.weight(1f).fillMaxWidth().clipToBounds()) {
                     Text("ĐANG PHÁT", color = Acc, fontSize = 17.sp, fontWeight = FontWeight.Bold)
                     Text(
                         if (media.title.isEmpty()) (if (starting) "Đang khởi động trình phát…" else "Chưa có nhạc đang phát") else media.title,
                         color = if (media.title.isEmpty()) Muted else Ink, fontSize = 26.sp, fontWeight = FontWeight.Bold,
-                        maxLines = 3, overflow = TextOverflow.Ellipsis
+                        maxLines = 1, softWrap = false,
+                        modifier = Modifier.fillMaxWidth().basicMarquee(iterations = Int.MAX_VALUE, velocity = 40.dp)
                     )
-                    if (media.artist.isNotEmpty()) Text(media.artist, color = Muted, fontSize = 20.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    if (media.artist.isNotEmpty()) {
+                        Text(
+                            media.artist, color = Muted, fontSize = 20.sp, maxLines = 1, softWrap = false,
+                            modifier = Modifier.fillMaxWidth().basicMarquee(iterations = Int.MAX_VALUE, velocity = 40.dp)
+                        )
+                    }
                     if (media.album.isNotEmpty()) {
                         Text("ALBUM", color = Acc, fontSize = 15.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 6.dp))
-                        Text(media.album, color = Ink, fontSize = 19.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                        Text(
+                            media.album, color = Ink, fontSize = 19.sp, maxLines = 1, softWrap = false,
+                            modifier = Modifier.fillMaxWidth().basicMarquee(iterations = Int.MAX_VALUE, velocity = 40.dp)
+                        )
                     }
                 }
-                Spacer(Modifier.weight(1f))
                 Row(horizontalArrangement = Arrangement.spacedBy(26.dp), verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Filled.SkipPrevious, null, tint = Ink, modifier = Modifier.size(48.dp).clickable { c?.transportControls?.skipToPrevious() })
                     Box(

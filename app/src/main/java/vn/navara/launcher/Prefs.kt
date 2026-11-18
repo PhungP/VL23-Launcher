@@ -78,7 +78,7 @@ data class UiPrefs(
     val navVoice: Boolean = true,       // đọc chỉ dẫn dẫn đường bằng giọng nói
     val homeLayout: Int = 0,            // bố cục trang 1 (bộ Đồng hồ xe): 0 bố cục mới (ảnh xe + 6 ô), 1 thể thao (đồng hồ vòng tua dạng cung)
     val geminiKey: String = "",         // khoá API Gemini (Google AI Studio) do người dùng nhập; trống = tắt nút Gemini
-    val geminiModel: String = "gemini-2.5-flash",   // tên mô hình Gemini
+    val geminiModel: String = "gemini-3.8-flash",   // tên mô hình Gemini (khi mô hình bị Google ngừng, app tự chọn Flash mới nhất)
     val geminiSpeak: Boolean = true,    // đọc to câu trả lời của Gemini
     val geminiPos: String = "",         // vị trí nút Gemini nổi sau khi kéo ("x,y" dp so với góc dưới trái)
     val tileBorder: Int = 2,            // độ dày viền ô thông số (trang 1 và trang OBD): 0 không viền, 1 mảnh, 2 vừa (như các bản trước), 3 dày, 4 rất dày
@@ -138,7 +138,8 @@ fun loadPrefs(c: Context): UiPrefs {
         homeLayout = s.getInt("homeLayout", d.homeLayout).coerceIn(0, 1),
         homeCount = s.getInt("homeCount", d.homeCount).coerceIn(2, 10),
         geminiKey = s.getString("geminiKey", d.geminiKey) ?: d.geminiKey,
-        geminiModel = (s.getString("geminiModel", d.geminiModel) ?: d.geminiModel).ifBlank { d.geminiModel },
+        // "gemini-2.5-flash" là mặc định của bản 0.21, Google đã ngừng nên đổi sang mặc định mới
+        geminiModel = (s.getString("geminiModel", d.geminiModel) ?: d.geminiModel).let { if (it.isBlank() || it == "gemini-2.5-flash") d.geminiModel else it },
         geminiSpeak = s.getBoolean("geminiSpeak", d.geminiSpeak),
         geminiPos = s.getString("geminiPos", d.geminiPos) ?: d.geminiPos,
         tileBorder = s.getInt("tileBorder", d.tileBorder).coerceIn(0, 4),

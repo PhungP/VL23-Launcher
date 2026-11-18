@@ -96,13 +96,11 @@ Launcher Android dành cho màn hình đầu máy trên ô tô (thiết kế cho
 ### 0.18
 - Google Maps: hiện thông báo "Đang tải" và nêu rõ lỗi do Google báo (ví dụ khoá sai loại, chưa bật Maps JavaScript API) thay vì để màn hình đen.
 
-### 0.21
-- **Trợ lý Gemini** (người dùng tự nhập khoá API trong Cài đặt > Gemini AI): nút Gemini nổi trên mọi trang, kéo được và nhớ vị trí.
-  - **Tìm đường bằng lời nói hoặc gõ chữ:** Gemini hiểu câu tự nhiên (ví dụ "cho tôi đường tới sân bay Cát Bi"), đổi thành chuỗi tìm địa chỉ, chạy qua dịch vụ tìm địa chỉ đang dùng (Goong hoặc Nominatim) rồi bạn chọn kết quả để dẫn đường.
-  - **Hỏi về xe:** trả lời ngắn bằng tiếng Việt dựa trên số liệu OBD, TPMS và hồ sơ xe hiện tại.
-  - **Mã lỗi:** đọc mã lỗi đang lưu trong xe (dịch vụ 03, không xoá mã, chỉ khi nối trực tiếp adapter) rồi nhờ Gemini giải thích ý nghĩa, nguyên nhân, mức độ; cũng gõ tay mã lỗi được.
-  - **Chuyến đi:** ghi quãng đường, tốc độ, nhiên liệu ước tính, tăng tốc và phanh gắt, thời gian đứng yên, vòng tua cao; Gemini nhận xét và gợi ý cải thiện. Lưu lại sau khi tắt máy, tự sang chuyến mới nếu OBD im quá 20 phút.
-  - Nói bằng micro của đầu xe (ghi âm tối đa 12 giây, gửi cho Gemini nghe); đọc to câu trả lời bằng giọng đọc của máy (tắt được).
+### 0.19
+- Thêm công cụ bản đồ **MapLibre + Goong** (Cài đặt > Bản đồ > Công cụ bản đồ): vẽ bản đồ bằng style Goong với ba kiểu Đường phố, Sáng, Dẫn đường (ngày/đêm).
+- **Tìm địa chỉ bằng Goong Geocoding** với mọi công cụ bản đồ (kể cả MapLibre + MapTiler): nhập "API Key" của Goong, mỗi lần bấm Tìm tốn một lượt gọi, câu đã tìm được nhớ lại (30 câu gần nhất).
+- Tuỳ chọn **Chỉ đường bằng Goong** (Goong Direction, chỉ dẫn tiếng Việt của Goong); mặc định tắt, vẫn dùng OSRM để không tốn hạn mức.
+- Thông báo rõ khi Goong từ chối khoá hoặc hết hạn mức.
 
 ### 0.20
 - **Bỏ bản đồ Google Maps** (WebView). Cài đặt đã chọn Google Maps tự chuyển về MapLibre + MapTiler.
@@ -113,11 +111,22 @@ Launcher Android dành cho màn hình đầu máy trên ô tô (thiết kế cho
 - **Tìm kiếm:** nút Dán nhận địa chỉ, toạ độ hoặc liên kết Google Maps (kể cả liên kết rút gọn maps.app.goo.gl) và dẫn thẳng tới đó khi đã có toạ độ; thêm nút sao chép địa chỉ ở mỗi kết quả.
 - **Độ phân giải:** tỉ lệ giao diện chỉnh được (80% đến 140%), cột thông số chia theo bề rộng màn hình, bản đồ MapLibre dùng đúng mật độ điểm ảnh nên chữ trên bản đồ cùng cỡ ở 800×480, 1280×720 và 1920×1080.
 
-### 0.19
-- Thêm công cụ bản đồ **MapLibre + Goong** (Cài đặt > Bản đồ > Công cụ bản đồ): vẽ bản đồ bằng style Goong với ba kiểu Đường phố, Sáng, Dẫn đường (ngày/đêm).
-- **Tìm địa chỉ bằng Goong Geocoding** với mọi công cụ bản đồ (kể cả MapLibre + MapTiler): nhập "API Key" của Goong, mỗi lần bấm Tìm tốn một lượt gọi, câu đã tìm được nhớ lại (30 câu gần nhất).
-- Tuỳ chọn **Chỉ đường bằng Goong** (Goong Direction, chỉ dẫn tiếng Việt của Goong); mặc định tắt, vẫn dùng OSRM để không tốn hạn mức.
-- Thông báo rõ khi Goong từ chối khoá hoặc hết hạn mức.
+### 0.21
+- **Trợ lý Gemini** (người dùng tự nhập khoá API trong Cài đặt > Gemini AI): nút Gemini nổi trên mọi trang, kéo được và nhớ vị trí.
+  - **Tìm đường bằng lời nói hoặc gõ chữ:** Gemini hiểu câu tự nhiên (ví dụ "cho tôi đường tới sân bay Cát Bi"), đổi thành chuỗi tìm địa chỉ, chạy qua dịch vụ tìm địa chỉ đang dùng (Goong hoặc Nominatim) rồi bạn chọn kết quả để dẫn đường.
+  - **Hỏi về xe:** trả lời ngắn bằng tiếng Việt dựa trên số liệu OBD, TPMS và hồ sơ xe hiện tại.
+  - **Mã lỗi:** đọc mã lỗi đang lưu trong xe (dịch vụ 03, không xoá mã, chỉ khi nối trực tiếp adapter) rồi nhờ Gemini giải thích ý nghĩa, nguyên nhân, mức độ; cũng gõ tay mã lỗi được.
+  - **Chuyến đi:** ghi quãng đường, tốc độ, nhiên liệu ước tính, tăng tốc và phanh gắt, thời gian đứng yên, vòng tua cao; Gemini nhận xét và gợi ý cải thiện. Lưu lại sau khi tắt máy, tự sang chuyến mới nếu OBD im quá 20 phút.
+  - Nói bằng micro của đầu xe (ghi âm tối đa 12 giây, gửi cho Gemini nghe); đọc to câu trả lời bằng giọng đọc của máy (tắt được).
+
+### 0.22
+- **Gemini:** mô hình mặc định đổi sang `gemini-3.8-flash` (Google đã ngừng `gemini-2.5-flash` từ tháng 11/2026 nên báo "không tìm thấy mô hình"). Nếu một mô hình bị ngừng trong tương lai, app tự hỏi Google danh sách mô hình, chọn Flash mới nhất, thử lại và lưu vào Cài đặt.
+- **Trang nhạc:** sửa dòng thời gian bài hát bị cắt khi tên bài dài; khối tên bài, nghệ sĩ, album tự giảm cỡ chữ hoặc bớt dòng để nút điều khiển, thanh tua và thời gian luôn hiện đủ.
+- Sửa lỗi biên dịch ở `GoogleLink.kt` (return trong hàm dạng biểu thức).
+
+### 0.23
+- **Trang nhạc:** tên bài hát và album dài không còn bị giảm cỡ chữ hay ẩn đi; chữ luôn một dòng, cỡ cố định và tự chạy ngang (marquee) khi dài hơn khung. Nghệ sĩ cũng chạy chữ khi dài. Dòng thời gian bài hát vẫn luôn hiện đủ.
+- **README:** sắp lại lịch sử thay đổi theo thứ tự từ phiên bản cũ đến mới.
 
 ## Cập nhật
 

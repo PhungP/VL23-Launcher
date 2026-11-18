@@ -113,7 +113,7 @@ fun GeminiOverlay(obd: ObdData, nav: Nav, update: (UiPrefs) -> Unit) {
                 Icon(Icons.Filled.AutoAwesome, null, tint = t.onAccent, modifier = Modifier.size(26.dp))
             }
         } else {
-            GeminiPanel(obd, nav) { open = false }
+            GeminiPanel(obd, nav, update) { open = false }
         }
     }
 }
@@ -131,10 +131,11 @@ private fun GChip(text: String, sel: Boolean, onClick: () -> Unit) {
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun GeminiPanel(obd: ObdData, nav: Nav, onClose: () -> Unit) {
+private fun GeminiPanel(obd: ObdData, nav: Nav, update: (UiPrefs) -> Unit, onClose: () -> Unit) {
     val ctx = LocalContext.current
     val t = LocalTheme.current
     val p = t.p
+    val curP by rememberUpdatedState(p)
     val scope = rememberCoroutineScope()
     val tp by TpmsManager.wheels.collectAsState()
     val ns by Navigator.state.collectAsState()
@@ -163,6 +164,9 @@ private fun GeminiPanel(obd: ObdData, nav: Nav, onClose: () -> Unit) {
             val r = Gemini.ask(p.geminiKey, p.geminiModel, system, user, audio, json)
             busy = false
             val txt = r.text
+            // Mô hình đã cấu hình bị Google ngừng: app đã tự chọn mô hình mới, lưu lại cho lần sau
+            val used = r.model
+            if (used != null && used != curP.geminiModel) update(curP.copy(geminiModel = used))
             if (txt == null) { answer = r.error ?: "Lỗi không rõ"; isError = true } else onText(txt)
         }
     }

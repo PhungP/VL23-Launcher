@@ -9,8 +9,8 @@ android {
         applicationId = "vn.navara.launcher"
         minSdk = 28
         targetSdk = 34
-        versionCode = 21
-        versionName = "0.21"
+        versionCode = 23
+        versionName = "0.23"
         // Tbox S1 là arm64: chỉ đóng gói thư viện native (MapLibre) cho arm64-v8a để APK nhẹ hơn nhiều.
         // Nếu máy báo không cài được hoặc bản đồ lỗi, thêm "armeabi-v7a" vào danh sách này.
         ndk { abiFilters += listOf("arm64-v8a") }

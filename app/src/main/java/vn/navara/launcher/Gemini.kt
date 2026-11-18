@@ -17,17 +17,67 @@ import java.util.Locale
 // ===== Trợ lý Gemini: người dùng tự nhập khoá API (Google AI Studio) trong Cài đặt =====
 // Gửi lên Google: câu hỏi hoặc đoạn ghi âm, vị trí hiện tại (khi tìm đường) và số liệu xe hiện có (khi hỏi về xe, mã lỗi, chuyến đi).
 
-class GeminiResult(val text: String?, val error: String?)
+// model: tên mô hình thực sự đã dùng khi app phải tự chọn lại mô hình (để lưu vào Cài đặt)
+class GeminiResult(val text: String?, val error: String?, val model: String? = null)
 
 object Gemini {
-    const val DEFAULT_MODEL = "gemini-2.5-flash"
+    // Google ngừng mô hình cũ khá thường xuyên (gemini-2.5-flash đã bị ngừng từ tháng 11/2026), nên khi gặp lỗi "không tìm thấy mô hình"
+    // app tự hỏi Google danh sách mô hình và chọn mô hình Flash mới nhất.
+    const val DEFAULT_MODEL = "gemini-3.8-flash"
 
     // audio: đoạn ghi âm AAC gửi kèm (Gemini tự nghe và hiểu tiếng Việt); json = true thì ép trả về JSON
     suspend fun ask(
         key: String, model: String, system: String, user: String,
         audio: ByteArray? = null, json: Boolean = false
-    ): GeminiResult = withContext(Dispatchers.IO) {
+    ): GeminiResult {
         val m = model.trim().ifEmpty { DEFAULT_MODEL }
+        val r = call(key, m, system, user, audio, json)
+        if (r.notFound) {
+            val alt = pickModel(key)
+            if (alt != null && alt != m) {
+                val r2 = call(key, alt, system, user, audio, json)
+                if (r2.res.text != null) return GeminiResult(r2.res.text, null, alt)
+                return r2.res
+            }
+        }
+        return r.res
+    }
+
+    private class Call(val res: GeminiResult, val notFound: Boolean)
+
+    // Hỏi Google danh sách mô hình và chọn mô hình Flash mới nhất hỗ trợ generateContent (bỏ lite, ảnh, giọng nói, live, nhúng...)
+    private suspend fun pickModel(key: String): String? = withContext(Dispatchers.IO) {
+        try {
+            val c = URL("https://generativelanguage.googleapis.com/v1beta/models?pageSize=200").openConnection() as HttpURLConnection
+            c.connectTimeout = 15000
+            c.readTimeout = 20000
+            c.setRequestProperty("x-goog-api-key", key.trim())
+            if (c.responseCode !in 200..299) { c.disconnect(); return@withContext null }
+            val txt = c.inputStream.bufferedReader().use { it.readText() }
+            c.disconnect()
+            val arr = JSONObject(txt).optJSONArray("models") ?: return@withContext null
+            val bad = listOf("lite", "image", "tts", "live", "audio", "embedding", "robotics", "omni", "computer", "thinking", "learnlm", "gemma")
+            var best: String? = null
+            var bestScore = -1.0
+            for (i in 0 until arr.length()) {
+                val o = arr.getJSONObject(i)
+                val id = o.optString("name").removePrefix("models/")
+                val methods = o.optJSONArray("supportedGenerationMethods")
+                var ok = false
+                if (methods != null) for (k in 0 until methods.length()) if (methods.optString(k) == "generateContent") ok = true
+                if (!ok || !id.startsWith("gemini-") || !id.contains("flash") || bad.any { id.contains(it) }) continue
+                val ver = Regex("""gemini-(\d+(?:\.\d+)?)""").find(id)?.groupValues?.get(1)?.toDoubleOrNull() ?: continue
+                // Cùng phiên bản thì ưu tiên bản ổn định hơn bản preview / thử nghiệm
+                val score = ver * 10.0 + (if (id.contains("preview") || id.contains("exp")) 0.0 else 1.0)
+                if (score > bestScore) { bestScore = score; best = id }
+            }
+            best
+        } catch (e: Exception) { null }
+    }
+
+    private suspend fun call(
+        key: String, m: String, system: String, user: String, audio: ByteArray?, json: Boolean
+    ): Call = withContext(Dispatchers.IO) {
         try {
             val parts = JSONArray()
             if (audio != null) {
@@ -51,16 +101,16 @@ object Gemini {
             val code = c.responseCode
             val txt = (if (code in 200..299) c.inputStream else c.errorStream)?.bufferedReader()?.use { it.readText() } ?: ""
             c.disconnect()
-            if (code !in 200..299) return@withContext GeminiResult(null, errText(code, txt, m))
+            if (code !in 200..299) return@withContext Call(GeminiResult(null, errText(code, txt, m)), code == 404)
             val cand = JSONObject(txt).optJSONArray("candidates")?.optJSONObject(0)
             val ps = cand?.optJSONObject("content")?.optJSONArray("parts")
             val sb = StringBuilder()
             if (ps != null) for (i in 0 until ps.length()) sb.append(ps.getJSONObject(i).optString("text"))
             val out = sb.toString().trim()
-            if (out.isEmpty()) GeminiResult(null, "Gemini không trả lời được (" + (cand?.optString("finishReason").orEmpty().ifEmpty { "không rõ lý do" }) + "). Thử hỏi lại.")
-            else GeminiResult(out, null)
+            if (out.isEmpty()) Call(GeminiResult(null, "Gemini không trả lời được (" + (cand?.optString("finishReason").orEmpty().ifEmpty { "không rõ lý do" }) + "). Thử hỏi lại."), false)
+            else Call(GeminiResult(out, null), false)
         } catch (e: Exception) {
-            GeminiResult(null, "Không gọi được Gemini, kiểm tra kết nối mạng")
+            Call(GeminiResult(null, "Không gọi được Gemini, kiểm tra kết nối mạng"), false)
         }
     }
 

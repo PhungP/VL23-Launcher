@@ -508,11 +508,11 @@ fun SettingsScreen(
                     note(
                         "Dán khoá API Gemini của bạn (tạo miễn phí tại aistudio.google.com/apikey) để hiện nút Gemini nổi trên mọi trang. " +
                             "Nút này giúp: nói để tìm đường, hỏi về tình trạng xe, giải thích mã lỗi đọc từ xe, nhận xét chuyến đi. " +
-                            "Khoá chỉ lưu trên máy bạn. Khi dùng, câu hỏi hoặc đoạn ghi âm, vị trí xe (khi tìm đường) và số liệu xe hiện có được gửi tới Google. " +
+                            "Khoá chỉ lưu trên máy bạn. Tên mô hình để mặc định là được: nếu Google ngừng mô hình đó, app tự chọn mô hình Flash mới nhất. Khi dùng, câu hỏi hoặc đoạn ghi âm, vị trí xe (khi tìm đường) và số liệu xe hiện có được gửi tới Google. " +
                             "Câu trả lời của AI chỉ để tham khảo, không thay thế thợ kỹ thuật; khi có đèn cảnh báo nghiêm trọng hãy dừng xe ở nơi an toàn."
                     )
                     full { bg -> Line(bg, "Khoá API Gemini") { Box(Modifier.width(300.dp)) { KeyField(p.geminiKey, "Dán khoá API Gemini vào đây") { onChange(p.copy(geminiKey = it)) } } } }
-                    full { bg -> Line(bg, "Mô hình Gemini") { Box(Modifier.width(300.dp)) { KeyField(p.geminiModel, "gemini-2.5-flash") { onChange(p.copy(geminiModel = it)) } } } }
+                    full { bg -> Line(bg, "Mô hình Gemini") { Box(Modifier.width(300.dp)) { KeyField(p.geminiModel, "gemini-3.8-flash") { onChange(p.copy(geminiModel = it)) } } } }
                     tg("Đọc to câu trả lời", p.geminiSpeak) { onChange(p.copy(geminiSpeak = it)) }
                     if (p.geminiPos.isNotEmpty()) line("Đưa nút Gemini về vị trí mặc định") { Btn("Đặt lại") { onChange(p.copy(geminiPos = "")) } }
                 }
