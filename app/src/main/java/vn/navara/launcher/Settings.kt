@@ -504,6 +504,19 @@ fun SettingsScreen(
                     choice("Số cột thông số", listOf("3", "4", "5", "6"), p.obdCols.coerceIn(3, 6) - 3, "Ít cột thì ô to, dễ nhìn; nhiều cột thì hiện được nhiều thông số cùng lúc. Độ dày viền chỉnh ở nhóm Trang 1.") { onChange(p.copy(obdCols = it + 3)) }
                 }
 
+                Group("Gemini AI (trợ lý giọng nói)") {
+                    note(
+                        "Dán khoá API Gemini của bạn (tạo miễn phí tại aistudio.google.com/apikey) để hiện nút Gemini nổi trên mọi trang. " +
+                            "Nút này giúp: nói để tìm đường, hỏi về tình trạng xe, giải thích mã lỗi đọc từ xe, nhận xét chuyến đi. " +
+                            "Khoá chỉ lưu trên máy bạn. Khi dùng, câu hỏi hoặc đoạn ghi âm, vị trí xe (khi tìm đường) và số liệu xe hiện có được gửi tới Google. " +
+                            "Câu trả lời của AI chỉ để tham khảo, không thay thế thợ kỹ thuật; khi có đèn cảnh báo nghiêm trọng hãy dừng xe ở nơi an toàn."
+                    )
+                    full { bg -> Line(bg, "Khoá API Gemini") { Box(Modifier.width(300.dp)) { KeyField(p.geminiKey, "Dán khoá API Gemini vào đây") { onChange(p.copy(geminiKey = it)) } } } }
+                    full { bg -> Line(bg, "Mô hình Gemini") { Box(Modifier.width(300.dp)) { KeyField(p.geminiModel, "gemini-2.5-flash") { onChange(p.copy(geminiModel = it)) } } } }
+                    tg("Đọc to câu trả lời", p.geminiSpeak) { onChange(p.copy(geminiSpeak = it)) }
+                    if (p.geminiPos.isNotEmpty()) line("Đưa nút Gemini về vị trí mặc định") { Btn("Đặt lại") { onChange(p.copy(geminiPos = "")) } }
+                }
+
                 Group("TPMS: áp suất lốp (cảm biến mua ngoài)") {
                     tg("Đọc cảm biến TPMS qua Bluetooth", p.tpmsOn) { onChange(p.copy(tpmsOn = it)) }
                     if (p.tpmsOn) {

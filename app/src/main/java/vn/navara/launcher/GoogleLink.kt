@@ -57,29 +57,36 @@ object PasteParser {
     }
 
     // Đi theo chuyển hướng của liên kết rút gọn bằng tay (không tải nội dung trang); dừng khi đã thấy toạ độ
-    private fun resolve(start: String): String? = try {
-        var cur = start
-        for (i in 0 until 6) {
-            val c = URL(cur).openConnection() as HttpURLConnection
-            c.instanceFollowRedirects = false
-            c.connectTimeout = 8000
-            c.readTimeout = 8000
-            c.setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Mobile Safari/537.36")
-            try {
-                val code = c.responseCode
-                if (code !in 300..399) return cur
-                val loc = c.getHeaderField("Location") ?: return cur
-                var next = if (loc.startsWith("http")) loc else URL(URL(cur), loc).toString()
-                // Trang đồng ý cookie của Google bọc địa chỉ thật trong tham số continue
-                if (next.contains("consent.google.")) CONTINUE.find(next)?.let { next = dec(it.groupValues[1]) }
-                cur = next
-                if (coordsFromUrl(cur) != null) return cur
-            } finally {
-                c.disconnect()
+    private fun resolve(start: String): String? {
+        try {
+            var cur = start
+            for (i in 0 until 6) {
+                val c = URL(cur).openConnection() as HttpURLConnection
+                c.instanceFollowRedirects = false
+                c.connectTimeout = 8000
+                c.readTimeout = 8000
+                c.setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Mobile Safari/537.36")
+                try {
+                    val code = c.responseCode
+                    if (code !in 300..399) return cur
+                    val loc = c.getHeaderField("Location") ?: return cur
+                    var next = if (loc.startsWith("http")) loc else URL(URL(cur), loc).toString()
+                    // Trang đồng ý cookie của Google bọc địa chỉ thật trong tham số continue
+                    if (next.contains("consent.google.")) {
+                        val m = CONTINUE.find(next)
+                        if (m != null) next = dec(m.groupValues[1])
+                    }
+                    cur = next
+                    if (coordsFromUrl(cur) != null) return cur
+                } finally {
+                    c.disconnect()
+                }
             }
+            return cur
+        } catch (e: Exception) {
+            return null
         }
-        cur
-    } catch (e: Exception) { null }
+    }
 
     suspend fun parse(raw: String): PasteResult {
         val text = raw.trim()

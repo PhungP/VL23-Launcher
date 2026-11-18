@@ -97,6 +97,59 @@ object ObdManager {
     const val OK = "OBD đã kết nối"
     private val _data = MutableStateFlow(ObdData())
     val data: StateFlow<ObdData> = _data
+
+    // Mã lỗi lưu trong xe (dịch vụ 03): null = chưa đọc hoặc đọc không được, danh sách rỗng = xe không có mã lỗi
+    val dtcCodes = MutableStateFlow<List<String>?>(null)
+    val dtcBusy = MutableStateFlow(false)
+    @Volatile private var dtcWant = false
+
+    // Yêu cầu đọc mã lỗi; việc đọc diễn ra xen vào vòng hỏi thông số, chỉ khi nối trực tiếp adapter OBD (không qua Torque)
+    fun requestDtc() {
+        dtcCodes.value = null
+        dtcBusy.value = true
+        dtcWant = true
+    }
+
+    private suspend fun readDtc(t: Transport) {
+        try {
+            val r = soft(t, "03", 6000)
+            dtcCodes.value = if (r == null) null else parseDtc(r)
+        } finally {
+            dtcBusy.value = false
+        }
+    }
+
+    // Trả lời dịch vụ 03 của ELM327: "43 02 01 33 01 34 00" (CAN: 43, số mã, rồi từng cặp byte). Hai byte đầu của mã: 2 bit chữ cái P C B U, 2 bit chữ số, 4 bit chữ số hex
+    private fun parseDtc(raw: String): List<String> {
+        val up = raw.uppercase()
+        if (up.contains("NO DATA")) return emptyList()
+        val sb = StringBuilder()
+        for (line0 in up.split('\r', '\n')) {
+            var line = line0.trim().replace(" ", "")
+            if (line.isEmpty()) continue
+            if (line.length >= 2 && line[1] == ':') line = line.substring(2)                   // khung nhiều dòng "0:" "1:"
+            else if (line.length == 3 && line.all { it in '0'..'9' || it in 'A'..'F' }) continue   // dòng báo số byte
+            if (!line.all { it in '0'..'9' || it in 'A'..'F' }) continue
+            sb.append(line)
+        }
+        val s = sb.toString()
+        val i = s.indexOf("43")
+        if (i < 0) return emptyList()
+        val bytes = s.substring(i + 2).chunked(2).filter { it.length == 2 }.map { it.toInt(16) }
+        if (bytes.isEmpty()) return emptyList()
+        val cnt = bytes[0]
+        val start = if (cnt in 0..20 && bytes.size >= 1 + cnt * 2) 1 else 0   // CAN có byte đếm số mã; giao thức cũ thì không
+        val n = if (start == 1) cnt else bytes.size / 2
+        val out = ArrayList<String>()
+        for (k in 0 until n) {
+            val a = bytes[start + 2 * k]
+            val c = bytes[start + 2 * k + 1]
+            if (a == 0 && c == 0) continue
+            val letter = "PCBU"[(a shr 6) and 3]
+            out.add(letter.toString() + ((a shr 4) and 3) + Integer.toHexString(a and 0xF).uppercase() + "%02X".format(c))
+        }
+        return out.distinct()
+    }
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var job: Job? = null
     private var source = 0
@@ -332,6 +385,7 @@ object ObdManager {
                 if (p.pid == "0D") updateGear()   // vừa có cặp vòng tua và tốc độ mới: tính số ngay, không chờ hết vòng
             }
             updateDerived()
+            if (dtcWant) { dtcWant = false; readDtc(t) }
             // Số thực tế theo chuẩn J1979 (PID A4): rất ít xe hỗ trợ, nếu không có thì dùng ước lượng
             if ("A4" in sup && a4Fail < 3 && n % 3 == 0) {
                 val r = soft(t, "01A4", 2000)

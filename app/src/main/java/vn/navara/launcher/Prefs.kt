@@ -77,6 +77,10 @@ data class UiPrefs(
     val iconBlue: Boolean = false,      // biểu tượng ứng dụng: xanh kết hợp trắng theo tông đồng hồ xe
     val navVoice: Boolean = true,       // đọc chỉ dẫn dẫn đường bằng giọng nói
     val homeLayout: Int = 0,            // bố cục trang 1 (bộ Đồng hồ xe): 0 bố cục mới (ảnh xe + 6 ô), 1 thể thao (đồng hồ vòng tua dạng cung)
+    val geminiKey: String = "",         // khoá API Gemini (Google AI Studio) do người dùng nhập; trống = tắt nút Gemini
+    val geminiModel: String = "gemini-2.5-flash",   // tên mô hình Gemini
+    val geminiSpeak: Boolean = true,    // đọc to câu trả lời của Gemini
+    val geminiPos: String = "",         // vị trí nút Gemini nổi sau khi kéo ("x,y" dp so với góc dưới trái)
     val tileBorder: Int = 2,            // độ dày viền ô thông số (trang 1 và trang OBD): 0 không viền, 1 mảnh, 2 vừa (như các bản trước), 3 dày, 4 rất dày
     val obdStyle: Int = 0,              // kiểu hiển thị thông số ở trang OBD: 0 thẻ (số và thanh nhỏ), 1..6 = số, kim, cung, thanh, số điện tử, đồ thị
     val obdCols: Int = 4,               // số cột thông số ở trang OBD (3..6)
@@ -133,6 +137,10 @@ fun loadPrefs(c: Context): UiPrefs {
         mapTilt = s.getBoolean("mapTilt", d.mapTilt),
         homeLayout = s.getInt("homeLayout", d.homeLayout).coerceIn(0, 1),
         homeCount = s.getInt("homeCount", d.homeCount).coerceIn(2, 10),
+        geminiKey = s.getString("geminiKey", d.geminiKey) ?: d.geminiKey,
+        geminiModel = (s.getString("geminiModel", d.geminiModel) ?: d.geminiModel).ifBlank { d.geminiModel },
+        geminiSpeak = s.getBoolean("geminiSpeak", d.geminiSpeak),
+        geminiPos = s.getString("geminiPos", d.geminiPos) ?: d.geminiPos,
         tileBorder = s.getInt("tileBorder", d.tileBorder).coerceIn(0, 4),
         obdStyle = s.getInt("obdStyle", d.obdStyle).coerceIn(0, 6),
         obdCols = s.getInt("obdCols", d.obdCols).coerceIn(3, 6),
@@ -180,7 +188,7 @@ fun savePrefs(c: Context, p: UiPrefs) {
         .putInt("mapEngine", p.mapEngine).putString("mapTilerKey", p.mapTilerKey).putInt("gearTrim", p.gearTrim)
         .putInt("skin", p.skin).putInt("mapTheme", p.mapTheme).putBoolean("mapTilt", p.mapTilt).putInt("homeLayout", p.homeLayout).putBoolean("navVoice", p.navVoice).putBoolean("iconBlue", p.iconBlue).putString("vehicle", p.vehicle).putInt("carPhoto", p.carPhoto).putInt("homeText", p.homeText).putInt("homeLine", p.homeLine).putInt("homeGear", p.homeGear).putString("goongMapKey", p.goongMapKey).putString("goongApiKey", p.goongApiKey).putBoolean("goongRoute", p.goongRoute).putInt("glass", p.glass).putInt("frameShape", p.frameShape).putString("homeOffsets", p.homeOffsets)
         .putInt("carImg", p.carImg).putInt("carVer", p.carVer).putInt("gearMode", p.gearStyle).putString("homeTiles", p.homeTiles)
-        .putInt("homeCount", p.homeCount).putInt("tileBorder", p.tileBorder).putInt("obdStyle", p.obdStyle).putInt("obdCols", p.obdCols).putInt("homeThick", p.homeThick).putInt("homeStyle", p.homeStyle)
+        .putInt("homeCount", p.homeCount).putString("geminiKey", p.geminiKey).putString("geminiModel", p.geminiModel).putBoolean("geminiSpeak", p.geminiSpeak).putString("geminiPos", p.geminiPos).putInt("tileBorder", p.tileBorder).putInt("obdStyle", p.obdStyle).putInt("obdCols", p.obdCols).putInt("homeThick", p.homeThick).putInt("homeStyle", p.homeStyle)
         .putString("homeStyles", p.homeStyles).putString("homeSizes", p.homeSizes).putInt("uiScale", p.uiScale)
         .putBoolean("tpmsOn", p.tpmsOn).putInt("tpmsUnit", p.tpmsUnit).putString("tpmsMap", p.tpmsMap)
         .putBoolean("tpmsAbs", p.tpmsAbs).putInt("tpmsTrim", p.tpmsTrim).putInt("tpmsLow", p.tpmsLow).putInt("tpmsHigh", p.tpmsHigh).apply()

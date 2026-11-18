@@ -96,6 +96,14 @@ Launcher Android dành cho màn hình đầu máy trên ô tô (thiết kế cho
 ### 0.18
 - Google Maps: hiện thông báo "Đang tải" và nêu rõ lỗi do Google báo (ví dụ khoá sai loại, chưa bật Maps JavaScript API) thay vì để màn hình đen.
 
+### 0.21
+- **Trợ lý Gemini** (người dùng tự nhập khoá API trong Cài đặt > Gemini AI): nút Gemini nổi trên mọi trang, kéo được và nhớ vị trí.
+  - **Tìm đường bằng lời nói hoặc gõ chữ:** Gemini hiểu câu tự nhiên (ví dụ "cho tôi đường tới sân bay Cát Bi"), đổi thành chuỗi tìm địa chỉ, chạy qua dịch vụ tìm địa chỉ đang dùng (Goong hoặc Nominatim) rồi bạn chọn kết quả để dẫn đường.
+  - **Hỏi về xe:** trả lời ngắn bằng tiếng Việt dựa trên số liệu OBD, TPMS và hồ sơ xe hiện tại.
+  - **Mã lỗi:** đọc mã lỗi đang lưu trong xe (dịch vụ 03, không xoá mã, chỉ khi nối trực tiếp adapter) rồi nhờ Gemini giải thích ý nghĩa, nguyên nhân, mức độ; cũng gõ tay mã lỗi được.
+  - **Chuyến đi:** ghi quãng đường, tốc độ, nhiên liệu ước tính, tăng tốc và phanh gắt, thời gian đứng yên, vòng tua cao; Gemini nhận xét và gợi ý cải thiện. Lưu lại sau khi tắt máy, tự sang chuyến mới nếu OBD im quá 20 phút.
+  - Nói bằng micro của đầu xe (ghi âm tối đa 12 giây, gửi cho Gemini nghe); đọc to câu trả lời bằng giọng đọc của máy (tắt được).
+
 ### 0.20
 - **Bỏ bản đồ Google Maps** (WebView). Cài đặt đã chọn Google Maps tự chuyển về MapLibre + MapTiler.
 - **Trang 1:** chọn số ô (2 đến 10), độ dày viền ô, chiều cao ô, 6 kiểu hiển thị (số, kim, cung, thanh, số điện tử, đồ thị), đổi cỡ từng ô và chọn thông số, kiểu riêng cho từng ô bằng cách chạm ô khi sắp xếp. Thêm hơn 20 thông số OBD, tốc độ và độ cao GPS.

@@ -520,6 +520,10 @@ object Navigator {
     }
 
     // ---------- Giọng nói ----------
+    // Dùng chung giọng đọc cho trợ lý Gemini
+    fun speakText(ctx: Context, text: String) = speak(ctx, text)
+    fun stopSpeaking() { Handler(Looper.getMainLooper()).post { try { tts?.stop() } catch (e: Exception) { } } }
+
     private fun speak(ctx: Context, text: String) {
         val app = ctx.applicationContext
         Handler(Looper.getMainLooper()).post {

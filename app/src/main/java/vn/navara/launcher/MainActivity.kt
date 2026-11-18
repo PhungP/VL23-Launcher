@@ -459,6 +459,13 @@ fun LauncherApp(update: (UiPrefs) -> Unit, openSettings: () -> Unit, openDialer:
     val go: (Int) -> Unit = { p -> scope.launch { pager.animateScrollToPage(p) } }
     val nav = Nav(pager.currentPage, go, openSettings, openDialer, order)
 
+    // Thống kê chuyến đi (cho trợ lý Gemini): cộng dồn mỗi giây khi OBD đang nối, ở mọi trang
+    LaunchedEffect(Unit) {
+        TripStats.load(ctx)
+        while (true) { delay(1000); TripStats.update(ctx, ObdManager.data.value) }
+    }
+
+    Box(Modifier.fillMaxSize()) {
     Column(Modifier.fillMaxSize()) {
         if (t.p.titleBar) TitleBar(obd)
         // Bản đồ đang mở khoá (kéo, zoom bằng tay): tắt vuốt đổi trang để không tranh cử chỉ với bản đồ; đổi trang bằng thanh dưới
@@ -476,6 +483,9 @@ fun LauncherApp(update: (UiPrefs) -> Unit, openSettings: () -> Unit, openDialer:
                 else -> MusicPage(media, grant, nav)
             }
         }
+    }
+    // Nút Gemini nổi trên mọi trang (chỉ hiện khi đã nhập khoá API Gemini trong Cài đặt)
+    GeminiOverlay(obd, nav, update)
     }
 }
 
