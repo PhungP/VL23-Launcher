@@ -32,6 +32,8 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -206,6 +208,69 @@ private fun Segmented(items: List<String>, sel: Int, onSel: (Int) -> Unit) {
 }
 
 @Composable
+private fun Stepper(text: String, onMinus: () -> Unit, onPlus: () -> Unit) {
+    val t = LocalTheme.current
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Btn("−", onClick = onMinus)
+        Text(text, color = t.ink, fontSize = 18.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, modifier = Modifier.widthIn(min = 76.dp))
+        Btn("+", onClick = onPlus)
+    }
+}
+
+// Danh sách cảm biến TPMS nghe thấy: giá trị đã giải mã, dữ liệu thô và nút gán bánh xe
+@Composable
+private fun TpmsDevices(bg: Brush, p: UiPrefs, onChange: (UiPrefs) -> Unit) {
+    val t = LocalTheme.current
+    val seen by TpmsManager.seen.collectAsState()
+    val wheels by TpmsManager.wheels.collectAsState()
+    val scanning by TpmsManager.scanning.collectAsState()
+    val map = parseTpmsMap(p.tpmsMap)
+    Column(Modifier.fillMaxWidth().background(bg).padding(horizontal = 16.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+            if (scanning) "Đang nghe cảm biến Bluetooth…" else "Chưa quét được (kiểm tra Bluetooth đã bật và đã cấp quyền Thiết bị lân cận)",
+            color = t.ink, fontSize = 16.sp, fontWeight = FontWeight.SemiBold
+        )
+        for (w in TPMS_WHEELS) {
+            val v = wheels[w]
+            Text(
+                tpmsWheelName(w) + ": " + (if (v == null) "--" else String.format(java.util.Locale.US, "%.2f bar  %.0f°C  pin %d%%", v.bar, v.tempC, v.battery)),
+                color = t.muted, fontSize = 15.sp
+            )
+        }
+        if (seen.isEmpty()) Text("Chưa nghe thấy cảm biến nào. Cảm biến ngủ khi xe đỗ: lăn bánh vài trăm mét, hoặc xả nhẹ rồi bơm lại lốp để đánh thức.", color = t.muted, fontSize = 15.sp)
+        for (s in seen) {
+            val assigned = map.entries.firstOrNull { it.value == s.addr }?.key
+            Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                Text(
+                    s.name + "  " + s.addr + "  " + s.rssi + " dBm" + (if (assigned != null) "  →  " + tpmsWheelName(assigned) else ""),
+                    color = t.ink, fontSize = 16.sp, fontWeight = FontWeight.Bold
+                )
+                val r = s.reading
+                Text(
+                    if (r != null) String.format(java.util.Locale.US, "Đọc được: %.1f kPa (thô), %.1f°C, pin %d%%", r.kpaRaw, r.tempC, r.battery)
+                    else "Chưa giải mã được loại cảm biến này. Dữ liệu thô: " + s.hex,
+                    color = t.muted, fontSize = 14.sp
+                )
+                if (r != null) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        for (w in TPMS_WHEELS) {
+                            Btn(w, modifier = Modifier.widthIn(min = 56.dp)) {
+                                val m = map.toMutableMap()
+                                m.entries.removeAll { it.value == s.addr || it.key == w }
+                                m[w] = s.addr
+                                onChange(p.copy(tpmsMap = tpmsMapToString(m)))
+                            }
+                        }
+                        Btn("Bỏ gán") { onChange(p.copy(tpmsMap = tpmsMapToString(map.filterValues { it != s.addr }))) }
+                    }
+                }
+            }
+        }
+        Text("FL trước trái, FR trước phải, RL sau trái, RR sau phải. Cảm biến chưa gán thì tự theo số trong tên (TPMS1 = FL, 2 = FR, 3 = RL, 4 = RR).", color = t.muted, fontSize = 14.sp)
+    }
+}
+
+@Composable
 private fun Btn(text: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
     val t = LocalTheme.current
     val shape = RoundedCornerShape(8.dp)
@@ -302,6 +367,12 @@ fun SettingsScreen(
                         "Chỉ áp dụng cho bộ Đồng hồ xe. Bố cục mới: ảnh xe ở giữa và 6 ô chỉ số. Thể thao: đồng hồ vòng tua dạng cung, la bàn và số cấp lớn ở giữa."
                     ) { onChange(p.copy(homeLayout = it)) }
                     choice("Cỡ chữ", listOf("Nhỏ", "Vừa", "Lớn", "Rất lớn"), p.textSize) { onChange(p.copy(textSize = it)) }
+                    val dm = ctx.resources.displayMetrics
+                    choice(
+                        "Tỉ lệ giao diện", listOf("100%", "80%", "90%", "110%", "125%", "140%"), p.uiScale,
+                        "Giao diện tự co giãn vừa màn hình (800×480, 1280×720, 1920×1080...). Màn hình hiện tại " + maxOf(dm.widthPixels, dm.heightPixels) + "×" + minOf(dm.widthPixels, dm.heightPixels) +
+                            " điểm ảnh. Chọn tỉ lệ nhỏ hơn 100% nếu muốn chữ và nút nhỏ lại để hiện được nhiều hơn, lớn hơn 100% nếu muốn dễ nhìn hơn."
+                    ) { onChange(p.copy(uiScale = it)) }
                     choice("Kích thước icon", listOf("Nhỏ", "Vừa", "Lớn", "Rất lớn"), p.iconSize) { onChange(p.copy(iconSize = it)) }
                     tg("Biểu tượng Navara đồng nhất", p.navaraIcons) { onChange(p.copy(navaraIcons = it)) }
                     if (!p.navaraIcons) tg("Biểu tượng gốc một màu trắng", p.whiteIcons) { onChange(p.copy(whiteIcons = it)) }
@@ -318,7 +389,7 @@ fun SettingsScreen(
                             if (sel) Text("Đang dùng", color = t.accent, fontSize = 18.sp, fontWeight = FontWeight.Bold)
                             else Btn("Chọn") {
                                 // Áp dụng hồ sơ: giao diện, ảnh xe, 6 ô thông số, thông số ở trang OBD và bảng tỉ số hộp số
-                                onChange(p.copy(vehicle = v.id, skin = v.skin, homeTiles = v.homeTiles, carImg = 0, carPhoto = 0, homeOffsets = "", obdTiles = "", gearTrim = 2))
+                                onChange(p.copy(vehicle = v.id, skin = v.skin, homeTiles = v.homeTiles, carImg = 0, carPhoto = 0, homeOffsets = "", homeSizes = "", homeStyles = "", obdTiles = "", gearTrim = 2))
                             }
                         }
                     }
@@ -346,10 +417,16 @@ fun SettingsScreen(
                         "Hình bao quanh các ô thông số và thanh thông tin ở trang 1."
                     ) { onChange(p.copy(frameShape = it)) }
                     if (p.homeLayout == 0) {
-                        line("Di chuyển các ô ở trang 1", "Mở trang 1 rồi dùng ngón tay kéo từng ô (6 ô thông số, thanh trên, cấp số) tới vị trí muốn. Bấm Xong để lưu.") {
+                        line(
+                            "Sắp xếp các ô ở trang 1 (kiểu Torque Pro)",
+                            "Mở trang 1 rồi kéo từng ô (ô thông số, thanh trên, cấp số) tới vị trí muốn. Kéo ô vuông ở góc một ô thông số để đổi cỡ. " +
+                                "Chạm vào một ô thông số để chọn thông số, kiểu hiển thị (số, kim, cung, thanh, số điện tử, đồ thị) và cỡ riêng cho ô đó. Bấm Xong để lưu."
+                        ) {
                             Btn("Bắt đầu") { HomeEdit.on.value = true; homeEvents.value = homeEvents.value + 1; onClose() }
                         }
-                        if (p.homeOffsets.isNotEmpty()) line("Đưa các ô về vị trí mặc định") { Btn("Đặt lại") { onChange(p.copy(homeOffsets = "")) } }
+                        if (p.homeOffsets.isNotEmpty() || p.homeSizes.isNotEmpty() || p.homeStyles.isNotEmpty()) {
+                            line("Đưa các ô về vị trí, cỡ và kiểu mặc định") { Btn("Đặt lại") { onChange(p.copy(homeOffsets = "", homeSizes = "", homeStyles = "")) } }
+                        }
                     } else {
                         note("Di chuyển ô chỉ dùng được với bố cục mới (không dùng cho bố cục Thể thao).")
                     }
@@ -376,8 +453,25 @@ fun SettingsScreen(
                         "Hiển thị cấp số", listOf("Số thể thao", "Ô cấp số"), p.gearStyle,
                         "Số thể thao: một chữ số to, nghiêng, không khung. Ô cấp số: chữ số nằm trong một ô có nhãn GEAR."
                     ) { onChange(p.copy(gearStyle = it)) }
-                    val slots = parseHomeTiles(p.homeTiles)
-                    val slotNames = listOf("Ô trái trên", "Ô trái giữa", "Ô trái dưới", "Ô phải trên", "Ô phải giữa", "Ô phải dưới")
+                    line("Số ô thông số", "Từ 2 đến 10 ô, chia đều cho hai cột trái và phải (nhiều ô thì mỗi ô thấp lại). Áp dụng cho bố cục mới.") {
+                        Stepper("${p.homeCount.coerceIn(2, 10)} ô", { onChange(p.copy(homeCount = (p.homeCount - 1).coerceIn(2, 10))) }, { onChange(p.copy(homeCount = (p.homeCount + 1).coerceIn(2, 10))) })
+                    }
+                    choice(
+                        "Độ dày viền ô", listOf("Không", "Mảnh", "Vừa", "Dày", "Rất dày"), p.tileBorder,
+                        "Độ dày đường viền của các hộp thông số OBD, áp dụng cho trang 1 và trang OBD. Vừa là độ dày như các bản trước."
+                    ) { onChange(p.copy(tileBorder = it)) }
+                    choice(
+                        "Chiều cao ô", listOf("Rất thấp", "Thấp", "Vừa", "Đầy hàng"), p.homeThick,
+                        "Đầy hàng: ô lấp đầy cột như các bản trước. Thấp hơn thì ô thấp lại và lộ ra nhiều ảnh xe hơn; ô quá thấp tự chuyển thành một hàng nhãn và số."
+                    ) { onChange(p.copy(homeThick = it)) }
+                    choice(
+                        "Kiểu hiển thị ô", TILE_STYLES, p.homeStyle,
+                        "Kiểu mặc định cho mọi ô. Muốn mỗi ô một kiểu: Bắt đầu sắp xếp ở mục \"Sắp xếp các ô ở trang 1\" (nhóm Hình nền và khung) rồi chạm vào ô."
+                    ) { onChange(p.copy(homeStyle = it)) }
+                    val slotCount = p.homeCount.coerceIn(2, 10)
+                    val slots = parseHomeTiles(p.homeTiles, slotCount)
+                    val leftCount = (slotCount + 1) / 2
+                    val slotNames = List(slotCount) { i -> if (i < leftCount) "Ô trái " + (i + 1) else "Ô phải " + (i - leftCount + 1) }
                     val pool = homePool(Vehicles.byId(p.vehicle))
                     fun setSlot(i: Int, d: Int) {
                         val cur = pool.indexOfFirst { it.key == slots[i] }.coerceAtLeast(0)
@@ -396,6 +490,42 @@ fun SettingsScreen(
                     line("Khôi phục thông số mặc định", "Thông số chỉ hiện khi xe thực sự trả về giá trị; chưa có thì hiện --. Áp dụng cho bộ giao diện Đồng hồ, Robot, SciFi (bố cục mới).") {
                         Btn("Khôi phục") { onChange(p.copy(homeTiles = UiPrefs().homeTiles)) }
                     }
+                }
+
+                Group("Trang OBD: kiểu hiển thị thông số") {
+                    val obdNames = listOf("Thẻ", "Số", "Kim", "Cung", "Thanh", "Số điện tử", "Đồ thị")
+                    line("Kiểu hiển thị", "Thẻ: số kèm thanh nhỏ như các bản trước. Các kiểu còn lại vẽ giống ô ở trang 1: số, đồng hồ kim, đồng hồ cung, thanh ngang, số điện tử 7 đoạn, đồ thị theo thời gian.") {
+                        Stepper(
+                            obdNames[p.obdStyle.coerceIn(0, 6)],
+                            { onChange(p.copy(obdStyle = (p.obdStyle + 6) % 7)) },
+                            { onChange(p.copy(obdStyle = (p.obdStyle + 1) % 7)) }
+                        )
+                    }
+                    choice("Số cột thông số", listOf("3", "4", "5", "6"), p.obdCols.coerceIn(3, 6) - 3, "Ít cột thì ô to, dễ nhìn; nhiều cột thì hiện được nhiều thông số cùng lúc. Độ dày viền chỉnh ở nhóm Trang 1.") { onChange(p.copy(obdCols = it + 3)) }
+                }
+
+                Group("TPMS: áp suất lốp (cảm biến mua ngoài)") {
+                    tg("Đọc cảm biến TPMS qua Bluetooth", p.tpmsOn) { onChange(p.copy(tpmsOn = it)) }
+                    if (p.tpmsOn) {
+                        choice("Đơn vị áp suất", listOf("bar", "psi", "kPa"), p.tpmsUnit) { onChange(p.copy(tpmsUnit = it)) }
+                        line("Ngưỡng áp suất thấp (cảnh báo màu cam)") {
+                            Stepper(String.format(java.util.Locale.US, "%.1f bar", p.tpmsLow / 10f), { onChange(p.copy(tpmsLow = (p.tpmsLow - 1).coerceIn(5, 40))) }, { onChange(p.copy(tpmsLow = (p.tpmsLow + 1).coerceIn(5, 40))) })
+                        }
+                        line("Ngưỡng áp suất cao (cảnh báo màu cam)") {
+                            Stepper(String.format(java.util.Locale.US, "%.1f bar", p.tpmsHigh / 10f), { onChange(p.copy(tpmsHigh = (p.tpmsHigh - 1).coerceIn(10, 60))) }, { onChange(p.copy(tpmsHigh = (p.tpmsHigh + 1).coerceIn(10, 60))) })
+                        }
+                        tg("Cảm biến báo áp suất tuyệt đối (trừ áp khí quyển)", p.tpmsAbs) { onChange(p.copy(tpmsAbs = it)) }
+                        line("Hiệu chỉnh áp suất", "So với đồng hồ đo lốp thật: đồng hồ cao hơn thì bấm +, thấp hơn thì bấm −. Mỗi bước 0,05 bar.") {
+                            Stepper(String.format(java.util.Locale.US, "%+.2f bar", p.tpmsTrim / 100f), { onChange(p.copy(tpmsTrim = (p.tpmsTrim - 5).coerceIn(-60, 60))) }, { onChange(p.copy(tpmsTrim = (p.tpmsTrim + 5).coerceIn(-60, 60))) })
+                        }
+                        full { bg -> TpmsDevices(bg, p, onChange) }
+                    }
+                    note(
+                        "Cảm biến nắp van Bluetooth (tên TPMS1_..., TPMS4_...) được giải mã sẵn; các loại khác chỉ hiện dữ liệu thô để đối chiếu. " +
+                            "Sau khi bật, lên trang 1, bấm Bắt đầu sắp xếp rồi chạm vào một ô và chọn Lốp trước trái, Lốp trước phải, Lốp sau trái, Lốp sau phải (áp suất) hoặc Nhiệt độ lốp. " +
+                            "Cảm biến báo áp suất tuyệt đối nên mặc định trừ áp khí quyển khoảng 1,01 bar; nếu số lệch so với đồng hồ đo lốp thì chỉnh ở mục Hiệu chỉnh. " +
+                            "Phần giải mã chưa kiểm tra được với cảm biến thật của bạn, nếu số bất thường hãy gửi dòng dữ liệu thô ở trên để chỉnh lại."
+                    )
                 }
 
                 Group("Trang và điều hướng") {
@@ -444,24 +574,14 @@ fun SettingsScreen(
                 }
 
                 Group("Bản đồ") {
-                    choice("Công cụ bản đồ", listOf("MapLibre + MapTiler", "OSM đơn giản", "Google Maps", "MapLibre + Goong"), p.mapEngine) { onChange(p.copy(mapEngine = it)) }
-                    if (p.mapEngine == 2) {
-                        note(
-                            "Google Maps dùng khoá API của bạn (tạo tại console.cloud.google.com): bật \"Maps JavaScript API\" và thanh toán cho dự án. " +
-                                "Khoá phải để không giới hạn hoặc giới hạn theo \"Websites\" với https://localhost/* (khoá giới hạn \"Android apps\" không dùng được cho bản đồ này). " +
-                                "Mỗi lần mở bản đồ tính một lượt tải theo bảng giá của Google. Khoá chỉ lưu trên máy bạn."
-                        )
-                        full { bg -> Line(bg, "Khoá API Google Maps") { Box(Modifier.width(300.dp)) { KeyField(p.googleKey, "Dán khoá API Google Maps vào đây") { onChange(p.copy(googleKey = it)) } } } }
-                        tg("Hiện lớp giao thông", p.mapTraffic) { onChange(p.copy(mapTraffic = it)) }
-                    }
+                    // mapEngine giữ số cũ: 0 MapTiler, 1 OSM, 3 Goong (số 2 là Google Maps đã bỏ) nên danh sách chọn có 3 mục
+                    choice("Công cụ bản đồ", listOf("MapLibre + MapTiler", "OSM đơn giản", "MapLibre + Goong"), if (p.mapEngine == 3) 2 else p.mapEngine.coerceAtMost(1)) { onChange(p.copy(mapEngine = if (it == 2) 3 else it)) }
                     if (p.mapEngine == 3) {
                         note(
-                            "Goong cần hai khoá riêng, tạo tại account.goong.io/keys: \"Maptiles Key\" để vẽ bản đồ và \"API Key\" để tìm địa điểm và chỉ đường. " +
-                                "Nếu chỉ nhập khoá Maptiles thì bản đồ vẫn hiện và dẫn đường dùng tạm Nominatim + OSRM. Mỗi khoá Goong có hạn mức theo ngày; " +
-                                "khoá chỉ lưu trên máy bạn."
+                            "Bản đồ Goong dùng \"Maptiles Key\" (tạo tại account.goong.io/keys). Khoá này khác với \"API Key\" ở mục Goong bên dưới. " +
+                                "Khoá chỉ lưu trên máy bạn."
                         )
                         full { bg -> Line(bg, "Khoá Maptiles Goong") { Box(Modifier.width(300.dp)) { KeyField(p.goongMapKey, "Dán Maptiles Key của Goong vào đây") { onChange(p.copy(goongMapKey = it)) } } } }
-                        full { bg -> Line(bg, "Khoá API Goong") { Box(Modifier.width(300.dp)) { KeyField(p.goongApiKey, "Dán API Key của Goong vào đây") { onChange(p.copy(goongApiKey = it)) } } } }
                         choice(
                             "Kiểu bản đồ Goong", listOf("Đường phố", "Sáng", "Dẫn đường"), p.mapTheme,
                             "Đường phố: đầy đủ địa điểm. Sáng: nền nhạt gọn. Dẫn đường: nền tối giản dành cho lái xe (tự đổi ngày/đêm theo Màu bản đồ)."
@@ -477,13 +597,21 @@ fun SettingsScreen(
                         "Streets: nhiều đường và địa điểm. OpenStreetMap: giống bản đồ OSM chuẩn (chỉ có bản sáng, chế độ tối dùng Streets)."
                     ) { onChange(p.copy(mapTheme = it)) }
                     }
+                    if (p.mapEngine != 1) {
+                        note(
+                            "Tìm địa chỉ bằng Goong (dùng được với cả MapTiler và Goong): dán \"API Key\" của Goong, loại khoá dành cho dịch vụ, không phải Maptiles Key. " +
+                                "Mỗi lần bấm Tìm tốn một lượt gọi Geocoding, câu đã tìm rồi được nhớ lại nên không tốn thêm. Để trống thì tìm bằng Nominatim."
+                        )
+                        full { bg -> Line(bg, "Khoá API Goong (tìm địa chỉ)") { Box(Modifier.width(300.dp)) { KeyField(p.goongApiKey, "Dán API Key của Goong vào đây") { onChange(p.copy(goongApiKey = it)) } } } }
+                        tg("Chỉ đường bằng Goong (tốn thêm lượt gọi)", p.goongRoute) { onChange(p.copy(goongRoute = it)) }
+                    }
                     tg("Bản đồ xoay theo hướng xe", p.mapHeadingUp) { onChange(p.copy(mapHeadingUp = it)) }
                     tg("Nghiêng 3D (nút 2D/3D)", p.mapTilt) { onChange(p.copy(mapTilt = it)) }
                     choice("Biểu tượng xe", listOf("Tam giác", "Xe bán tải"), if (p.mapMarker == 1) 0 else 1) { onChange(p.copy(mapMarker = if (it == 0) 1 else 0)) }
                     choice("Màu bản đồ", listOf("Theo giao diện", "Sáng", "Tối"), p.mapStyle) { onChange(p.copy(mapStyle = it)) }
                     tg("Đọc chỉ dẫn dẫn đường bằng giọng nói", p.navVoice) { onChange(p.copy(navVoice = it)) }
                     note(
-                        "Dẫn đường: chạm nút mũi tên ở cạnh phải trang Bản đồ, nhập điểm đến rồi chọn. Cần mạng và bản đồ MapLibre (MapTiler hoặc Goong) hoặc Google Maps. " +
+                        "Dẫn đường: chạm nút mũi tên ở cạnh phải trang Bản đồ, nhập điểm đến rồi chọn. Cần mạng và bản đồ MapLibre (MapTiler hoặc Goong). " +
                             "Giọng nói dùng bộ đọc tiếng Việt của máy (cần cài sẵn dữ liệu giọng tiếng Việt)."
                     )
                 }

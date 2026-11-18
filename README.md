@@ -8,19 +8,22 @@ Launcher Android dành cho màn hình đầu máy trên ô tô (thiết kế cho
 ## Tính năng
 
 - **Hồ sơ xe:** chọn đúng dòng xe (hãng, model, năm) để tự đổi giao diện, ảnh xe, thông số OBD và PID, bảng tỉ số hộp số. Hiện có Nissan Navara 2023 VL, Honda Accord 2015 Thái Lan và hai hồ sơ chung.
-- **Trang 1 (trang chủ):** hình xe ở giữa, 6 ô thông số OBD, thanh trên cùng (giờ, thời tiết, hướng đi, nhạc đang phát) và cấp số hiện hành.
+- **Trang 1 (trang chủ):** hình xe ở giữa, 2 đến 10 ô thông số OBD (mặc định 6), thanh trên cùng (giờ, thời tiết, hướng đi, nhạc đang phát) và cấp số hiện hành.
 - **Tùy chọn trang 1:**
   - Hình xe: ảnh Navara, ảnh riêng của bạn, khung dây hoặc bóng xe (vẽ vector).
-  - 6 ô thông số: mỗi ô chọn trong 19 thông số (vòng tua, tải động cơ, nhiệt độ nước, boost, khí nạp, điện áp, chân ga, mô-men, công suất, EGT...), có biểu tượng riêng.
+  - Ô thông số: số ô từ 2 đến 10, mỗi ô chọn trong hơn 40 thông số (vòng tua, tải, nhiệt độ nước, boost, khí nạp, điện áp, chân ga, mô-men, công suất, EGT, lambda, áp suất rail, tốc độ và độ cao GPS, áp suất và nhiệt độ lốp TPMS...), có biểu tượng riêng.
+  - Độ dày viền ô thông số (không viền, mảnh, vừa, dày, rất dày) và chiều cao ô (rất thấp đến đầy hàng).
+  - Kiểu hiển thị kiểu Torque Pro: số, đồng hồ kim, đồng hồ cung, thanh, số điện tử 7 đoạn, đồ thị; chọn mặc định hoặc riêng từng ô.
   - Cấp số: **Số thể thao** (một chữ số to, nghiêng) hoặc **Ô cấp số**.
   - Màu chữ, màu viền hộp và màu số cấp chọn tự do trong 8 màu.
-  - Kéo từng ô tới vị trí mong muốn (Cài đặt > Hình nền và khung > Di chuyển các ô ở trang 1).
-- **Giao diện:** ba bộ **Đồng hồ**, **Robot**, **SciFi**; chỉnh cỡ chữ, kích thước biểu tượng, thứ tự các trang.
+  - Sắp xếp kiểu Torque Pro (Cài đặt > Hình nền và khung > Sắp xếp các ô ở trang 1): kéo ô để đổi chỗ, kéo ô vuông ở góc để đổi cỡ, chạm ô để chọn thông số, kiểu hiển thị và cỡ riêng.
+- **Giao diện:** ba bộ **Đồng hồ**, **Robot**, **SciFi**; chỉnh cỡ chữ, tỉ lệ giao diện, kích thước biểu tượng, thứ tự các trang. Tự co giãn theo màn hình 800×480, 1280×720, 1920×1080...
+- **TPMS:** đọc cảm biến áp suất lốp mua ngoài qua Bluetooth (họ cảm biến nắp van TPMS1_...TPMS4_...), hiện áp suất và nhiệt độ từng lốp ở trang 1, cảnh báo khi ngoài ngưỡng.
 - **Hình nền và khung:** hình nền đen, địa hình, chuyển màu hoặc ảnh riêng (không áp dụng cho trang 1); độ trong suốt khung 5 mức; hình khung vát góc, bo tròn, lục giác hoặc vuông.
 - **Biểu tượng ứng dụng:** bộ biểu tượng Navara đồng nhất, biểu tượng gốc một màu trắng, hoặc xanh kết hợp trắng theo tông đồng hồ xe.
-- **Trang thông số OBD:** lưới mọi thông số xe báo hỗ trợ, giá trị đỉnh, thanh báo sang số.
-- **Bản đồ:** chọn MapLibre + MapTiler (cảnh báo giới hạn tốc độ và camera), OSM đơn giản, **Google Maps** (khoá API do người dùng nhập, có lớp giao thông) hoặc **MapLibre + Goong** (người dùng nhập khoá Goong); xoay theo hướng xe, nghiêng 3D; thanh dock trong suốt.
-- **Dẫn đường:** tìm địa điểm, vẽ tuyến, chỉ dẫn rẽ bằng tiếng Việt, đọc bằng giọng nói, tự tính lại đường khi đi lệch.
+- **Trang thông số OBD:** lưới mọi thông số xe báo hỗ trợ, giá trị đỉnh, thanh báo sang số; chọn kiểu hiển thị (thẻ, số, kim, cung, thanh, số điện tử, đồ thị) và số cột 3 đến 6.
+- **Bản đồ:** chọn MapLibre + MapTiler (cảnh báo giới hạn tốc độ và camera), OSM đơn giản hoặc **MapLibre + Goong** (người dùng nhập khoá Goong); xoay theo hướng xe, nghiêng 3D; nút khoá / mở khoá cảm ứng để kéo và zoom bản đồ bằng tay; thanh dock trong suốt.
+- **Dẫn đường:** tìm địa điểm (có nút Dán địa chỉ hoặc liên kết từ Google Maps và nút sao chép địa chỉ), vẽ tuyến, chỉ dẫn rẽ bằng tiếng Việt, đọc bằng giọng nói, tự tính lại đường khi đi lệch.
 - **Nhạc:** tên bài, ảnh bìa, thông số âm thanh, hiệu ứng phổ và điều khiển trình phát đang chạy.
 - **Cập nhật trực tuyến:** kiểm tra và cài bản mới từ GitHub Releases ngay trong Cài đặt.
 
@@ -93,9 +96,19 @@ Launcher Android dành cho màn hình đầu máy trên ô tô (thiết kế cho
 ### 0.18
 - Google Maps: hiện thông báo "Đang tải" và nêu rõ lỗi do Google báo (ví dụ khoá sai loại, chưa bật Maps JavaScript API) thay vì để màn hình đen.
 
+### 0.20
+- **Bỏ bản đồ Google Maps** (WebView). Cài đặt đã chọn Google Maps tự chuyển về MapLibre + MapTiler.
+- **Trang 1:** chọn số ô (2 đến 10), độ dày viền ô, chiều cao ô, 6 kiểu hiển thị (số, kim, cung, thanh, số điện tử, đồ thị), đổi cỡ từng ô và chọn thông số, kiểu riêng cho từng ô bằng cách chạm ô khi sắp xếp. Thêm hơn 20 thông số OBD, tốc độ và độ cao GPS.
+- **Trang OBD:** chọn kiểu hiển thị thông số (thẻ, số, kim, cung, thanh, số điện tử, đồ thị) và số cột; độ dày viền ô dùng chung với trang 1.
+- **TPMS:** đọc cảm biến áp suất lốp Bluetooth mua ngoài; gán cảm biến cho bốn bánh, chọn đơn vị bar, psi hoặc kPa, ngưỡng cảnh báo, hiệu chỉnh áp suất; ô lốp trên trang 1 đổi màu khi ngoài ngưỡng.
+- **Bản đồ:** nút khoá / mở khoá cảm ứng ngay trên bản đồ (mở khoá thì kéo, zoom hai ngón và dùng nút + / − để zoom, tắt vuốt đổi trang; nút định vị để về xe).
+- **Tìm kiếm:** nút Dán nhận địa chỉ, toạ độ hoặc liên kết Google Maps (kể cả liên kết rút gọn maps.app.goo.gl) và dẫn thẳng tới đó khi đã có toạ độ; thêm nút sao chép địa chỉ ở mỗi kết quả.
+- **Độ phân giải:** tỉ lệ giao diện chỉnh được (80% đến 140%), cột thông số chia theo bề rộng màn hình, bản đồ MapLibre dùng đúng mật độ điểm ảnh nên chữ trên bản đồ cùng cỡ ở 800×480, 1280×720 và 1920×1080.
+
 ### 0.19
-- Thêm công cụ bản đồ **MapLibre + Goong** (Cài đặt > Bản đồ > Công cụ bản đồ): vẽ bản đồ bằng style của Goong, tìm địa điểm bằng Goong Place và chỉ đường bằng Goong Direction, chỉ dẫn tiếng Việt của Goong. Người dùng tự nhập khoá Maptiles và khoá API của Goong.
-- Ba kiểu bản đồ Goong: Đường phố, Sáng, Dẫn đường (ngày/đêm). Chỉ nhập khoá Maptiles thì dẫn đường tạm dùng Nominatim + OSRM.
+- Thêm công cụ bản đồ **MapLibre + Goong** (Cài đặt > Bản đồ > Công cụ bản đồ): vẽ bản đồ bằng style Goong với ba kiểu Đường phố, Sáng, Dẫn đường (ngày/đêm).
+- **Tìm địa chỉ bằng Goong Geocoding** với mọi công cụ bản đồ (kể cả MapLibre + MapTiler): nhập "API Key" của Goong, mỗi lần bấm Tìm tốn một lượt gọi, câu đã tìm được nhớ lại (30 câu gần nhất).
+- Tuỳ chọn **Chỉ đường bằng Goong** (Goong Direction, chỉ dẫn tiếng Việt của Goong); mặc định tắt, vẫn dùng OSRM để không tốn hạn mức.
 - Thông báo rõ khi Goong từ chối khoá hoặc hết hạn mức.
 
 ## Cập nhật
@@ -106,17 +119,6 @@ Quy tắc phát hành:
 - Tạo Release có tag lớn hơn bản đang cài (ví dụ `v0.11`) và đính kèm một file `.apk`.
 - Mọi bản phải ký **cùng một khóa**, nếu không Android sẽ không cho cài đè.
 
-## Google Maps
-
-Chọn **Cài đặt > Bản đồ > Công cụ bản đồ > Google Maps** rồi dán khoá API vào ô nhập. Khoá chỉ lưu trên máy, không đưa vào mã nguồn.
-
-Tạo khoá tại console.cloud.google.com:
-1. Bật **Maps JavaScript API** (không phải Maps SDK for Android, hai API này tách biệt) và bật thanh toán cho dự án (Google tính phí theo lượt tải bản đồ).
-2. Đặt giới hạn ứng dụng cho khoá là **Websites** với `https://localhost/*`, hoặc không giới hạn. Khoá giới hạn "Android apps" không dùng được vì bản đồ chạy trong WebView.
-3. Giới hạn API của khoá chỉ gồm Maps JavaScript API.
-
-Dữ liệu tìm địa điểm và tuyến đường vẫn lấy từ Nominatim và OSRM, được vẽ đè lên bản đồ Google.
-
 ## Dẫn đường và bản đồ
 
 - Bản đồ vector dùng MapLibre với tile của MapTiler Cloud (dữ liệu OpenStreetMap). Nhập khóa API MapTiler miễn phí trong **Cài đặt > Bản đồ**, hoặc khai báo `MAPTILER_KEY` trong `gradle.properties` khi build. Không có khóa thì app dùng bản đồ OSM đơn giản và không có dẫn đường.
@@ -125,11 +127,11 @@ Dữ liệu tìm địa điểm và tuyến đường vẫn lấy từ Nominatim
 
 ## Goong
 
-Chọn **Cài đặt > Bản đồ > Công cụ bản đồ > MapLibre + Goong**. Tạo khoá tại account.goong.io/keys; Goong có hai loại khoá riêng:
-- **Maptiles Key:** dán vào ô "Khoá Maptiles Goong", dùng để vẽ bản đồ.
-- **API Key:** dán vào ô "Khoá API Goong", dùng để tìm địa điểm (Place AutoComplete và Place Detail) và tính đường (Direction).
+Tạo khoá tại account.goong.io/keys; Goong có hai loại khoá riêng:
+- **Maptiles Key:** chỉ dùng khi chọn công cụ bản đồ **MapLibre + Goong** (ô "Khoá Maptiles Goong"), để vẽ bản đồ.
+- **API Key:** ô "Khoá API Goong" trong Cài đặt > Bản đồ, dùng được với mọi công cụ bản đồ. Có khoá này thì tìm địa chỉ bằng Goong Geocoding. Bật thêm "Chỉ đường bằng Goong" nếu muốn tính đường bằng Goong Direction; tắt thì tính đường bằng OSRM như cũ.
 
-Khoá chỉ lưu trên máy, không đưa vào mã nguồn. Không nhập khoá API thì bản đồ vẫn hiện và dẫn đường dùng Nominatim + OSRM như cũ. Hạn mức gọi API tuỳ gói của tài khoản Goong; app tính lại đường tối đa mỗi 10 giây khi đi lệch.
+Khoá chỉ lưu trên máy, không đưa vào mã nguồn. Để đỡ tốn hạn mức: chỉ tìm khi bấm nút Tìm, câu đã tìm được nhớ lại, và chỉ đường mặc định không dùng Goong. Nếu bật chỉ đường bằng Goong, app tính lại đường tối đa mỗi 10 giây khi đi lệch, mỗi lần là một lượt gọi.
 
 ## Thêm hồ sơ xe mới
 

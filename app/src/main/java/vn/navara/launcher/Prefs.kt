@@ -50,7 +50,7 @@ data class UiPrefs(
     val pageOrder: String = "home,map,music,telemetry,apps",  // thứ tự các trang khi vuốt
     val obdTiles: String = "",         // thông số hiển thị ở trang theo dõi OBD: rỗng = mặc định, "-" = không hiện gì, hoặc danh sách khoá
     val loadSource: Int = 0,            // nguồn thanh engine load: 0 tự động, 1 tính toán, 2 chân ga, 3 mô-men
-    val mapEngine: Int = 0,             // công cụ bản đồ: 0 MapLibre + MapTiler (cần khoá), 1 OSM đơn giản, 2 Google Maps (cần khoá), 3 MapLibre + Goong (cần khoá)
+    val mapEngine: Int = 0,             // công cụ bản đồ: 0 MapLibre + MapTiler (cần khoá), 1 OSM đơn giản, 3 MapLibre + Goong (cần khoá); số 2 (Google Maps) đã bỏ
     val mapTilerKey: String = "",       // khoá API MapTiler nhập trong Cài đặt (nếu trống dùng khoá khai báo lúc build)
     val gearTrim: Int = 2,              // hiệu chỉnh cấp số: 0..4 = -6%, -3%, 0, +3%, +6%
     val mapMarker: Int = 1,             // biểu tượng xe trên bản đồ: 0 xe bán tải, 1 tam giác (mặc định)
@@ -62,15 +62,14 @@ data class UiPrefs(
     val carImg: Int = 0,                // hình xe ở trang 1: 0 ảnh Navara, 1 ảnh riêng, 2 khung dây, 3 bóng xe
     val carVer: Int = 0,                // tăng mỗi khi chọn ảnh xe riêng mới (để nạp lại ảnh)
     val gearStyle: Int = 0,             // cách hiện cấp số ở trang 1: 0 số thể thao, 1 ô cấp số
-    val homeTiles: String = "rpm,load,coolant,boost,iat,volt",   // 6 ô thông số ở trang 1 (3 trái từ trên xuống, 3 phải từ trên xuống)
+    val homeTiles: String = "rpm,load,coolant,boost,iat,volt",   // các ô thông số ở trang 1 (nửa đầu cột trái từ trên xuống, nửa sau cột phải); thiếu thì lấy theo mặc định
     val homeText: Int = 0,              // màu chữ ở trang 1: 0 theo giao diện, 1..8 theo bảng HOME_COLORS
     val homeLine: Int = 0,              // màu viền các hộp ở trang 1
     val homeGear: Int = 0,              // màu số cấp ở trang 1
     val carPhoto: Int = 0,              // ảnh đang chọn trong danh sách ảnh của hồ sơ xe
-    val googleKey: String = "",         // khoá API Google Maps do người dùng nhập
     val goongMapKey: String = "",       // khoá Maptiles của Goong (vẽ bản đồ) do người dùng nhập
-    val goongApiKey: String = "",       // khoá API của Goong (tìm địa điểm, chỉ đường) do người dùng nhập
-    val mapTraffic: Boolean = true,     // hiện lớp giao thông trên bản đồ Google
+    val goongApiKey: String = "",  // khoá API của Goong do người dùng nhập: tìm địa chỉ (Geocoding), và chỉ đường nếu bật goongRoute
+    val goongRoute: Boolean = false,    // chỉ đường bằng Goong Direction (tắt = dùng OSRM, không tốn hạn mức Goong)
     val vehicle: String = "nissan_navara_2023_vl",   // hồ sơ xe đang chọn (Vehicles.kt)
     val glass: Int = 3,                 // độ trong suốt của khung/ô: 0 đặc ... 4 trong suốt hoàn toàn
     val frameShape: Int = 0,            // hình khung: 0 vát góc, 1 bo tròn, 2 lục giác, 3 vuông
@@ -78,6 +77,22 @@ data class UiPrefs(
     val iconBlue: Boolean = false,      // biểu tượng ứng dụng: xanh kết hợp trắng theo tông đồng hồ xe
     val navVoice: Boolean = true,       // đọc chỉ dẫn dẫn đường bằng giọng nói
     val homeLayout: Int = 0,            // bố cục trang 1 (bộ Đồng hồ xe): 0 bố cục mới (ảnh xe + 6 ô), 1 thể thao (đồng hồ vòng tua dạng cung)
+    val tileBorder: Int = 2,            // độ dày viền ô thông số (trang 1 và trang OBD): 0 không viền, 1 mảnh, 2 vừa (như các bản trước), 3 dày, 4 rất dày
+    val obdStyle: Int = 0,              // kiểu hiển thị thông số ở trang OBD: 0 thẻ (số và thanh nhỏ), 1..6 = số, kim, cung, thanh, số điện tử, đồ thị
+    val obdCols: Int = 4,               // số cột thông số ở trang OBD (3..6)
+    val homeCount: Int = 6,             // số ô thông số ở trang 1 (2..10), chia hai cột trái và phải
+    val homeThick: Int = 3,             // độ dày ô: 0 rất mỏng, 1 mỏng, 2 vừa, 3 dày (đầy hàng, như các bản trước)
+    val homeStyle: Int = 0,             // kiểu hiển thị mặc định của ô: 0 số, 1 đồng hồ kim, 2 đồng hồ cung, 3 thanh, 4 số điện tử, 5 đồ thị
+    val homeStyles: String = "",        // kiểu riêng từng ô: "t0=1;t3=4"
+    val homeSizes: String = "",         // kích thước riêng từng ô (hệ số rộng, cao so với ô gốc): "t0=1.2,0.9"
+    val uiScale: Int = 0,               // tỉ lệ giao diện: 0 tự khớp màn hình (100%), 1..5 = 80%, 90%, 110%, 125%, 140%
+    val tpmsOn: Boolean = false,        // đọc cảm biến áp suất lốp (TPMS) mua ngoài qua Bluetooth
+    val tpmsUnit: Int = 0,              // đơn vị áp suất lốp: 0 bar, 1 psi, 2 kPa
+    val tpmsMap: String = "",           // gán cảm biến cho bánh xe: "FL=AA:BB:CC:DD:EE:FF;FR=..." (FL trước trái, FR trước phải, RL sau trái, RR sau phải)
+    val tpmsAbs: Boolean = true,        // cảm biến báo áp suất tuyệt đối: trừ áp khí quyển để ra áp suất lốp
+    val tpmsTrim: Int = 0,              // hiệu chỉnh áp suất lốp, đơn vị 0,01 bar (âm hoặc dương)
+    val tpmsLow: Int = 20,              // ngưỡng áp suất thấp, đơn vị 0,1 bar
+    val tpmsHigh: Int = 32,             // ngưỡng áp suất cao, đơn vị 0,1 bar
 )
 
 fun loadPrefs(c: Context): UiPrefs {
@@ -108,7 +123,7 @@ fun loadPrefs(c: Context): UiPrefs {
         mapHeadingUp = s.getBoolean("mapHeadingUp", d.mapHeadingUp),
         pageOrder = (s.getString("pageOrder", null) ?: d.pageOrder).let { if (it == "home,telemetry,apps,map,music" || it == "home,apps,map,music,telemetry") d.pageOrder else it },  // thứ tự mặc định cũ -> mặc định mới
         loadSource = s.getInt("loadSource", d.loadSource).coerceIn(0, 3),
-        mapEngine = s.getInt("mapEngine", d.mapEngine).coerceIn(0, 3),
+        mapEngine = s.getInt("mapEngine", d.mapEngine).let { if (it == 2) 0 else it.coerceIn(0, 3) },   // 2 = Google Maps đã bỏ từ 0.20, quy về MapLibre + MapTiler
         mapTilerKey = s.getString("mapTilerKey", d.mapTilerKey) ?: d.mapTilerKey,
         gearTrim = s.getInt("gearTrim", d.gearTrim).coerceIn(0, 4),
         obdTiles = s.getString("obdTiles", d.obdTiles) ?: d.obdTiles,
@@ -117,6 +132,22 @@ fun loadPrefs(c: Context): UiPrefs {
         mapTheme = s.getInt("mapTheme", d.mapTheme).coerceIn(0, 2),
         mapTilt = s.getBoolean("mapTilt", d.mapTilt),
         homeLayout = s.getInt("homeLayout", d.homeLayout).coerceIn(0, 1),
+        homeCount = s.getInt("homeCount", d.homeCount).coerceIn(2, 10),
+        tileBorder = s.getInt("tileBorder", d.tileBorder).coerceIn(0, 4),
+        obdStyle = s.getInt("obdStyle", d.obdStyle).coerceIn(0, 6),
+        obdCols = s.getInt("obdCols", d.obdCols).coerceIn(3, 6),
+        homeThick = s.getInt("homeThick", d.homeThick).coerceIn(0, 3),
+        homeStyle = s.getInt("homeStyle", d.homeStyle).coerceIn(0, 5),
+        homeStyles = s.getString("homeStyles", d.homeStyles) ?: d.homeStyles,
+        homeSizes = s.getString("homeSizes", d.homeSizes) ?: d.homeSizes,
+        uiScale = s.getInt("uiScale", d.uiScale).coerceIn(0, 5),
+        tpmsOn = s.getBoolean("tpmsOn", d.tpmsOn),
+        tpmsUnit = s.getInt("tpmsUnit", d.tpmsUnit).coerceIn(0, 2),
+        tpmsMap = s.getString("tpmsMap", d.tpmsMap) ?: d.tpmsMap,
+        tpmsAbs = s.getBoolean("tpmsAbs", d.tpmsAbs),
+        tpmsTrim = s.getInt("tpmsTrim", d.tpmsTrim).coerceIn(-60, 60),
+        tpmsLow = s.getInt("tpmsLow", d.tpmsLow).coerceIn(5, 40),
+        tpmsHigh = s.getInt("tpmsHigh", d.tpmsHigh).coerceIn(10, 60),
         navVoice = s.getBoolean("navVoice", d.navVoice),
         iconBlue = s.getBoolean("iconBlue", d.iconBlue),
         glass = s.getInt("glass", d.glass).coerceIn(0, 4),
@@ -125,10 +156,9 @@ fun loadPrefs(c: Context): UiPrefs {
         homeText = s.getInt("homeText", d.homeText).coerceIn(0, HOME_COLORS.size),
         homeLine = s.getInt("homeLine", d.homeLine).coerceIn(0, HOME_COLORS.size),
         homeGear = s.getInt("homeGear", d.homeGear).coerceIn(0, HOME_COLORS.size),
-        googleKey = s.getString("googleKey", d.googleKey) ?: d.googleKey,
         goongMapKey = s.getString("goongMapKey", d.goongMapKey) ?: d.goongMapKey,
         goongApiKey = s.getString("goongApiKey", d.goongApiKey) ?: d.goongApiKey,
-        mapTraffic = s.getBoolean("mapTraffic", d.mapTraffic),
+        goongRoute = s.getBoolean("goongRoute", d.goongRoute),
         frameShape = s.getInt("frameShape", d.frameShape).coerceIn(0, 3),
         homeOffsets = s.getString("homeOffsets", d.homeOffsets) ?: d.homeOffsets,
         carImg = s.getInt("carImg", d.carImg).coerceIn(0, 3),
@@ -148,8 +178,12 @@ fun savePrefs(c: Context, p: UiPrefs) {
         .putBoolean("trafficAlert", p.trafficAlert).putBoolean("alertSound", p.alertSound).putInt("mapStyle", p.mapStyle).putBoolean("mapHeadingUp", p.mapHeadingUp).putInt("mapMarker", p.mapMarker)
         .putString("pageOrder", p.pageOrder).putInt("loadSource", p.loadSource).putString("obdTiles", p.obdTiles)
         .putInt("mapEngine", p.mapEngine).putString("mapTilerKey", p.mapTilerKey).putInt("gearTrim", p.gearTrim)
-        .putInt("skin", p.skin).putInt("mapTheme", p.mapTheme).putBoolean("mapTilt", p.mapTilt).putInt("homeLayout", p.homeLayout).putBoolean("navVoice", p.navVoice).putBoolean("iconBlue", p.iconBlue).putString("vehicle", p.vehicle).putInt("carPhoto", p.carPhoto).putInt("homeText", p.homeText).putInt("homeLine", p.homeLine).putInt("homeGear", p.homeGear).putString("googleKey", p.googleKey).putString("goongMapKey", p.goongMapKey).putString("goongApiKey", p.goongApiKey).putBoolean("mapTraffic", p.mapTraffic).putInt("glass", p.glass).putInt("frameShape", p.frameShape).putString("homeOffsets", p.homeOffsets)
-        .putInt("carImg", p.carImg).putInt("carVer", p.carVer).putInt("gearMode", p.gearStyle).putString("homeTiles", p.homeTiles).apply()
+        .putInt("skin", p.skin).putInt("mapTheme", p.mapTheme).putBoolean("mapTilt", p.mapTilt).putInt("homeLayout", p.homeLayout).putBoolean("navVoice", p.navVoice).putBoolean("iconBlue", p.iconBlue).putString("vehicle", p.vehicle).putInt("carPhoto", p.carPhoto).putInt("homeText", p.homeText).putInt("homeLine", p.homeLine).putInt("homeGear", p.homeGear).putString("goongMapKey", p.goongMapKey).putString("goongApiKey", p.goongApiKey).putBoolean("goongRoute", p.goongRoute).putInt("glass", p.glass).putInt("frameShape", p.frameShape).putString("homeOffsets", p.homeOffsets)
+        .putInt("carImg", p.carImg).putInt("carVer", p.carVer).putInt("gearMode", p.gearStyle).putString("homeTiles", p.homeTiles)
+        .putInt("homeCount", p.homeCount).putInt("tileBorder", p.tileBorder).putInt("obdStyle", p.obdStyle).putInt("obdCols", p.obdCols).putInt("homeThick", p.homeThick).putInt("homeStyle", p.homeStyle)
+        .putString("homeStyles", p.homeStyles).putString("homeSizes", p.homeSizes).putInt("uiScale", p.uiScale)
+        .putBoolean("tpmsOn", p.tpmsOn).putInt("tpmsUnit", p.tpmsUnit).putString("tpmsMap", p.tpmsMap)
+        .putBoolean("tpmsAbs", p.tpmsAbs).putInt("tpmsTrim", p.tpmsTrim).putInt("tpmsLow", p.tpmsLow).putInt("tpmsHigh", p.tpmsHigh).apply()
 }
 
 // Bảng màu chọn cho chữ, viền và số cấp ở trang 1 (chỉ số 0 = theo giao diện)

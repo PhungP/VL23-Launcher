@@ -16,6 +16,9 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberUpdatedState
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlin.math.roundToInt
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -49,13 +52,20 @@ import org.maplibre.android.style.sources.GeoJsonSource
 // hoặc của Goong (goong = true, dữ liệu bản đồ Việt Nam).
 // Xe vẫn được vẽ bằng Compose ở giữa màn hình; bản đồ chỉ nhận lệnh từ code (tắt mọi cử chỉ), nên vuốt đổi trang không bị nhầm.
 // Gói MapTiler miễn phí giới hạn dùng phi thương mại, bắt buộc hiện logo MapTiler và ghi nguồn OpenStreetMap trên bản đồ.
+// Khoá / mở khoá cảm ứng bản đồ: khoá = bản đồ chỉ nhận lệnh từ code và bám theo xe; mở khoá = kéo, zoom bằng tay và không bám theo xe
+object MapTouch { val free = MutableStateFlow(false) }
+
+// Lệnh zoom từ nút + / − khi bản đồ đang mở khoá (n tăng dần để mỗi lần bấm là một lệnh mới, d = +1 hoặc −1 bậc)
+data class ZoomCmd(val n: Int, val d: Int)
+
 private const val EMPTY = "{\"type\":\"FeatureCollection\",\"features\":[]}"
 
 @Composable
 fun MapLibrePane(
     modifier: Modifier, loc: Location?, dark: Boolean, zoom: Int,
     pois: List<Poi>, headingUp: Boolean, marker: Int, key: String,
-    theme: Int = 0, tilt: Boolean = false, goong: Boolean = false
+    theme: Int = 0, tilt: Boolean = false, goong: Boolean = false,
+    free: Boolean = false, recenterTick: Int = 0, zoomCmd: ZoomCmd = ZoomCmd(0, 0), onFreeZoom: (Int) -> Unit = {}
 ) {
     val ctx = LocalContext.current
     val dens = LocalDensity.current.density
@@ -71,10 +81,14 @@ fun MapLibrePane(
     }
     val ang by animateFloatAsState(cum, tween(700))
 
-    val mapView = remember {
+    // pixelRatio theo mật độ của giao diện (đã co giãn theo màn hình) để chữ và nét bản đồ cùng cỡ trên 800×480, 1280×720, 1920×1080...
+    val mapView = remember(dens) {
         MapLibre.getInstance(ctx.applicationContext)
-        MapView(ctx, MapLibreMapOptions.createFromAttributes(ctx).textureMode(true)).also { it.onCreate(null) }
+        MapView(ctx, MapLibreMapOptions.createFromAttributes(ctx).textureMode(true).pixelRatio(dens)).also { it.onCreate(null) }
     }
+    val freeNow by rememberUpdatedState(free)
+    val onZoomNow by rememberUpdatedState(onFreeZoom)
+    var camTick by remember { mutableStateOf(0) }
     DisposableEffect(owner, mapView) {
         val lc = owner?.lifecycle
         val obs = LifecycleEventObserver { _, e ->
@@ -102,6 +116,12 @@ fun MapLibrePane(
         mapView.getMapAsync { m ->
             m.uiSettings.setAllGesturesEnabled(false)
             m.uiSettings.isCompassEnabled = false
+            // Bản đồ mở khoá: vẽ lại xe theo toạ độ khi bản đồ di chuyển; dừng tay thì đồng bộ mức zoom để nút + / − và chế độ bám xe dùng đúng mức
+            m.addOnCameraMoveListener { camTick++ }
+            m.addOnCameraIdleListener {
+                camTick++
+                if (freeNow) onZoomNow((m.cameraPosition.zoom + 1.0).roundToInt().coerceIn(12, 19))
+            }
             val pad = (8 * dens).toInt()
             m.uiSettings.setAttributionGravity(Gravity.BOTTOM or Gravity.END)
             m.uiSettings.setAttributionMargins(0, 0, pad, pad)
@@ -214,7 +234,36 @@ fun MapLibrePane(
         }
         m.style?.getSourceAs<GeoJsonSource>("poi-src")?.setGeoJson(json)
     }
-    LaunchedEffect(loc, headingUp, zoom, tilt, map) {
+    // Cử chỉ: khoá thì tắt hết, mở khoá thì cho kéo, zoom, xoay (không nghiêng)
+    LaunchedEffect(map, free) {
+        val m = map ?: return@LaunchedEffect
+        m.uiSettings.setAllGesturesEnabled(false)
+        if (free) {
+            m.uiSettings.isScrollGesturesEnabled = true
+            m.uiSettings.isZoomGesturesEnabled = true
+            m.uiSettings.isDoubleTapGesturesEnabled = true
+            m.uiSettings.isQuickZoomGesturesEnabled = true
+            m.uiSettings.isRotateGesturesEnabled = true
+            m.uiSettings.isTiltGesturesEnabled = false
+        }
+    }
+    // Nút + / − khi mở khoá: zoom tương đối quanh tâm bản đồ hiện tại
+    LaunchedEffect(zoomCmd) {
+        val m = map ?: return@LaunchedEffect
+        if (zoomCmd.n == 0 || !free) return@LaunchedEffect
+        m.animateCamera(CameraUpdateFactory.zoomBy(zoomCmd.d.toDouble()), 250)
+    }
+    // Nút về vị trí xe khi mở khoá: đưa bản đồ về xe một lần, vẫn giữ trạng thái mở khoá
+    LaunchedEffect(recenterTick) {
+        if (recenterTick == 0) return@LaunchedEffect
+        val m = map ?: return@LaunchedEffect
+        val l = loc ?: return@LaunchedEffect
+        val b = if (headingUp) ((cum % 360f) + 360f) % 360f else 0f
+        val cp = CameraPosition.Builder().target(LatLng(l.latitude, l.longitude)).zoom(zoom - 1.0).bearing(b.toDouble()).tilt(if (tilt) 45.0 else 0.0).build()
+        m.easeCamera(CameraUpdateFactory.newCameraPosition(cp), 600)
+    }
+    LaunchedEffect(loc, headingUp, zoom, tilt, map, free) {
+        if (free) return@LaunchedEffect   // mở khoá: không giành quyền điều khiển camera với ngón tay
         val m = map ?: return@LaunchedEffect
         val l = loc ?: return@LaunchedEffect
         val b = if (headingUp) ((cum % 360f) + 360f) % 360f else 0f
@@ -228,8 +277,14 @@ fun MapLibrePane(
         // Xe nằm giữa màn hình, quay theo hướng chạy (hoặc luôn hướng lên khi bản đồ xoay theo xe)
         Canvas(Modifier.fillMaxSize()) {
             if (loc != null) {
-                val anchor = Offset(size.width / 2f, size.height / 2f)
-                val rot = if (headingUp) 0f else ang
+                var anchor = Offset(size.width / 2f, size.height / 2f)
+                var rot = if (headingUp) 0f else ang
+                val m = map
+                if (free && m != null && camTick >= 0) {   // mở khoá: đặt xe đúng toạ độ trên bản đồ đã kéo, mũi tên xoay bù theo góc bản đồ
+                    val pt = m.projection.toScreenLocation(LatLng(loc.latitude, loc.longitude))
+                    anchor = Offset(pt.x, pt.y)
+                    rot = ang - m.cameraPosition.bearing.toFloat()
+                }
                 if (marker == 1) rotate(rot, anchor) { drawArrow(anchor, dens, orange) }
                 else rotate(rot, anchor) { drawTruck(anchor, dens, orange) }
             }

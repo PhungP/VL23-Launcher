@@ -72,6 +72,10 @@ import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.Explore
 import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.Navigation
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.LockOpen
+import androidx.compose.material.icons.filled.MyLocation
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material.icons.filled.WaterDrop
@@ -303,14 +307,16 @@ fun clockText(): String {
 
 // Thẻ kiểu đồng hồ xe: nền xanh đen, viền mảnh; đang chọn thì viền cam; ô đặc biệt (special) viền xanh lá
 @Composable
-fun Modifier.card(shape: Shape = RoundedCornerShape(14.dp), selected: Boolean = false, special: Boolean = false): Modifier {
+fun Modifier.card(shape: Shape = RoundedCornerShape(14.dp), selected: Boolean = false, special: Boolean = false, border: Float = -1f): Modifier {
     val t = LocalTheme.current
     val line = when {
         special -> t.green
         selected -> t.accent
         else -> t.ink.copy(alpha = if (t.mono != 0) 0.45f else 0.28f)
     }
-    return this.clip(shape).background(t.panelG).border(if (selected || special) 2.5.dp else 1.5.dp, line, shape)
+    val bw = if (border >= 0f) border else if (selected || special) 2.5f else 1.5f
+    val m = this.clip(shape).background(t.panelG)
+    return if (bw > 0f) m.border(bw.dp, line, shape) else m
 }
 
 // Khung thiết kế rộng 640dp, cao tối thiểu 384dp (5:3, màn Navara 800x480 => x1.25); màn 4:3 800x600 cũng khớp
@@ -340,9 +346,12 @@ fun Root(applyBars: (Boolean) -> Unit) {
     LaunchedEffect(prefs.gearTrim) { ObdManager.gearTrim = prefs.gearTrim }
     LaunchedEffect(prefs.obdSource) { ObdManager.restart(ctx, prefs.obdSource) }
     LaunchedEffect(prefs.hideBar) { applyBars(prefs.hideBar) }
+    LaunchedEffect(prefs.tpmsOn, prefs.tpmsMap, prefs.tpmsAbs, prefs.tpmsTrim) { TpmsManager.configure(prefs.tpmsOn, prefs.tpmsMap, prefs.tpmsAbs, prefs.tpmsTrim) }
 
     BoxWithConstraints(Modifier.fillMaxSize().background(theme.bg)) {
-        val d = minOf(constraints.maxWidth / 640f, constraints.maxHeight / 384f)
+        // Giao diện thiết kế trên khung 640×384 dp rồi co giãn theo độ phân giải: 800×480, 1280×720, 1920×1080... đều lấp đầy màn hình;
+        // màn 16:9 có thêm chiều ngang nên các cột chia theo tỉ lệ. Người dùng chỉnh thêm tỉ lệ ở Cài đặt > Giao diện.
+        val d = minOf(constraints.maxWidth / 640f, constraints.maxHeight / 384f) * floatArrayOf(1f, 0.8f, 0.9f, 1.1f, 1.25f, 1.4f)[prefs.uiScale.coerceIn(0, 5)]
         CompositionLocalProvider(LocalTheme provides theme, LocalDensity provides Density(d, theme.scale), LocalPrefUpdate provides update) {
             ProvideTextStyle(TextStyle(fontFamily = if (theme.mono == 0) ClusterFont else FontFamily.Default)) {
             Box(Modifier.fillMaxSize()) {
@@ -452,8 +461,11 @@ fun LauncherApp(update: (UiPrefs) -> Unit, openSettings: () -> Unit, openDialer:
 
     Column(Modifier.fillMaxSize()) {
         if (t.p.titleBar) TitleBar(obd)
+        // Bản đồ đang mở khoá (kéo, zoom bằng tay): tắt vuốt đổi trang để không tranh cử chỉ với bản đồ; đổi trang bằng thanh dưới
+        val mapFree by MapTouch.free.collectAsState()
         HorizontalPager(
             state = pager,
+            userScrollEnabled = !(mapFree && order.getOrNull(pager.currentPage) == "map"),
             modifier = Modifier.weight(1f).fillMaxWidth()
         ) { page ->
             when (order[page]) {
@@ -842,6 +854,13 @@ fun MapPage(obd: ObdData, nav: Nav, update: (UiPrefs) -> Unit) {
     val g = rememberGps()
     val l = g.loc
     var showNav by remember { mutableStateOf(false) }
+    val free by MapTouch.free.collectAsState()
+    var recenter by remember { mutableStateOf(0) }
+    var zcmd by remember { mutableStateOf(ZoomCmd(0, 0)) }
+    var hint by remember { mutableStateOf(false) }
+    // Rời trang bản đồ thì khoá lại; mở khoá thì nhắc cách dùng vài giây
+    DisposableEffect(Unit) { onDispose { MapTouch.free.value = false } }
+    LaunchedEffect(free) { hint = free; if (free) { delay(6000); hint = false } }
     val ns by Navigator.state.collectAsState()
     val spd = if (obd.status == ObdManager.OK) obd.speed else g.kmh
     val tr by TrafficAlert.state.collectAsState()
@@ -858,24 +877,20 @@ fun MapPage(obd: ObdData, nav: Nav, update: (UiPrefs) -> Unit) {
     val dockH = (3 + dockHeightDp(t.p.iconSize)).dp
     Box(Modifier.fillMaxSize()) {
             val mapKey = t.p.mapTilerKey.ifBlank { BuildConfig.MAPTILER_KEY }.trim()
-            val gKey = t.p.googleKey.trim()
             val goongMapKey = t.p.goongMapKey.trim()
             val goongApiKey = t.p.goongApiKey.trim()
-            // Dịch vụ tìm địa điểm / chỉ đường: có khoá API Goong thì dùng Goong, không thì Nominatim + OSRM
-            LaunchedEffect(t.p.mapEngine, goongApiKey) { Navigator.configure(if (t.p.mapEngine == 3) goongApiKey else "") }
-            if (t.p.mapEngine == 2 && gKey.isNotBlank()) {
-                GoogleMapPane(Modifier.fillMaxSize(), l, mapDark, zoom, hu, t.p.mapTilt, gKey, t.p.mapTraffic)
-            } else if (t.p.mapEngine == 0 && mapKey.isNotBlank()) {
-                MapLibrePane(Modifier.fillMaxSize(), l, mapDark, zoom, if (on) tr.pois else emptyList(), hu, t.p.mapMarker, mapKey, t.p.mapTheme, t.p.mapTilt)
+            // Có khoá API Goong thì tìm địa chỉ bằng Goong Geocoding (với mọi công cụ bản đồ); chỉ đường bằng Goong khi bật, không thì OSRM
+            LaunchedEffect(goongApiKey, t.p.goongRoute) { Navigator.configure(goongApiKey, t.p.goongRoute) }
+            if (t.p.mapEngine == 0 && mapKey.isNotBlank()) {
+                MapLibrePane(Modifier.fillMaxSize(), l, mapDark, zoom, if (on) tr.pois else emptyList(), hu, t.p.mapMarker, mapKey, t.p.mapTheme, t.p.mapTilt, false, free, recenter, zcmd) { zoom = it }
             } else if (t.p.mapEngine == 3 && goongMapKey.isNotBlank()) {
-                MapLibrePane(Modifier.fillMaxSize(), l, mapDark, zoom, if (on) tr.pois else emptyList(), hu, t.p.mapMarker, goongMapKey, t.p.mapTheme, t.p.mapTilt, true)
+                MapLibrePane(Modifier.fillMaxSize(), l, mapDark, zoom, if (on) tr.pois else emptyList(), hu, t.p.mapMarker, goongMapKey, t.p.mapTheme, t.p.mapTilt, true, free, recenter, zcmd) { zoom = it }
             } else {
                 MapPane(Modifier.fillMaxSize(), l, mapDark, zoom, 0.5f, if (on) tr.pois else emptyList(), hu, t.p.mapMarker)
                 if (t.p.mapEngine != 1) {
                     MapChip(ovBg, Modifier.align(Alignment.BottomCenter).padding(bottom = dockH + 10.dp)) {
                         Text(
-                            if (t.p.mapEngine == 2) "Chưa có khoá Google Maps (vào Cài đặt) – đang dùng bản đồ OSM đơn giản"
-                            else if (t.p.mapEngine == 3) "Chưa có khoá Maptiles của Goong (vào Cài đặt) – đang dùng bản đồ OSM đơn giản"
+                            if (t.p.mapEngine == 3) "Chưa có khoá Maptiles của Goong (vào Cài đặt) – đang dùng bản đồ OSM đơn giản"
                             else "Chưa có khoá MapTiler (vào Cài đặt) – đang dùng bản đồ OSM đơn giản",
                             color = ovInk, fontSize = 15.sp
                         )
@@ -884,8 +899,8 @@ fun MapPage(obd: ObdData, nav: Nav, update: (UiPrefs) -> Unit) {
             }
             Box(Modifier.fillMaxSize().padding(bottom = dockH)) {
             // Dẫn đường chỉ có trên bản đồ MapLibre (cần vẽ tuyến lên bản đồ vector)
-            val naviOk = (t.p.mapEngine == 0 && mapKey.isNotBlank()) || (t.p.mapEngine == 2 && gKey.isNotBlank()) || (t.p.mapEngine == 3 && goongMapKey.isNotBlank())
-            // Nút zoom to; bản đồ không nhận thao tác chạm/kéo nên vuốt đổi trang không bị nhầm
+            val naviOk = (t.p.mapEngine == 0 && mapKey.isNotBlank()) || (t.p.mapEngine == 3 && goongMapKey.isNotBlank())
+            // Nút zoom to. Bản đồ đang khoá thì không nhận chạm/kéo nên vuốt đổi trang không bị nhầm; mở khoá (nút ổ khoá phía trên) để kéo và zoom bằng tay
             Column(Modifier.align(Alignment.CenterEnd).padding(10.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 if (naviOk) {
                     MapBtn(ovBg, if (ns.route != null) t.accent else ovInk, { showNav = true }) {
@@ -893,7 +908,7 @@ fun MapPage(obd: ObdData, nav: Nav, update: (UiPrefs) -> Unit) {
                     }
                 }
                 listOf("+" to 1, "−" to -1).forEach { (label, d) ->
-                    MapBtn(ovBg, ovInk, { zoom = (zoom + d).coerceIn(12, 19) }) {
+                    MapBtn(ovBg, ovInk, { if (free) zcmd = ZoomCmd(zcmd.n + 1, d) else zoom = (zoom + d).coerceIn(12, 19) }) {
                         Text(label, color = ovInk, fontSize = 32.sp, fontWeight = FontWeight.Bold)
                     }
                 }
@@ -919,6 +934,20 @@ fun MapPage(obd: ObdData, nav: Nav, update: (UiPrefs) -> Unit) {
                 Modifier.align(Alignment.TopEnd).padding(top = 10.dp, end = if (lim != null) 86.dp else 10.dp),
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
+                // Khoá / mở khoá cảm ứng bản đồ: mở khoá thì kéo một ngón để di chuyển, hai ngón để phóng to / thu nhỏ (bản đồ ngừng bám theo xe)
+                if (naviOk) {
+                    if (free) {
+                        MapBtn(ovBg, ovInk, { recenter++ }) {
+                            Icon(Icons.Filled.MyLocation, null, tint = ovInk, modifier = Modifier.size(30.dp))
+                        }
+                    }
+                    MapBtn(if (free) t.accent else ovBg, if (free) t.accent else ovInk, { MapTouch.free.value = !free }) {
+                        Icon(
+                            if (free) Icons.Filled.LockOpen else Icons.Filled.Lock, null,
+                            tint = if (free) t.onAccent else ovInk, modifier = Modifier.size(30.dp)
+                        )
+                    }
+                }
                 MapBtn(ovBg, ovInk, { update(t.p.copy(mapStyle = if (mapDark) 1 else 2)) }) {
                     Icon(if (mapDark) Icons.Filled.LightMode else Icons.Filled.DarkMode, null, tint = ovInk, modifier = Modifier.size(30.dp))
                 }
@@ -936,6 +965,11 @@ fun MapPage(obd: ObdData, nav: Nav, update: (UiPrefs) -> Unit) {
                 }
             }
             if (lim != null) SpeedSign(lim, flash, Modifier.align(Alignment.TopEnd).padding(10.dp))
+            if (free && hint) {
+                MapChip(ovBg, Modifier.align(Alignment.BottomCenter).padding(bottom = 76.dp)) {
+                    Text("Đã mở khoá: kéo để di chuyển, hai ngón để zoom. Bấm ổ khoá để bản đồ bám theo xe lại.", color = ovInk, fontSize = 15.sp)
+                }
+            }
             val poi = tr.poi
             if (on && poi != null) PoiBanner(poi, tr.poiDist, Modifier.align(Alignment.BottomStart).padding(start = 10.dp, bottom = 74.dp))
             MapChip(ovBg, Modifier.align(Alignment.BottomStart).padding(10.dp).clickable { open(ctx, Intent(Intent.ACTION_VIEW, Uri.parse("geo:0,0?q="))) }) {

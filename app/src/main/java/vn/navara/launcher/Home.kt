@@ -9,6 +9,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -102,7 +103,7 @@ private val GearBlue = Color(0xFF3D8BFF)
 
 // Khung bo vát hai bên (left/right = có vát góc phía đó), nền xanh đen và viền xanh dương mảnh
 @Composable
-fun Modifier.panel(cut: Dp = 14.dp, left: Boolean = true, right: Boolean = true, line: Color? = null): Modifier {
+fun Modifier.panel(cut: Dp = 14.dp, left: Boolean = true, right: Boolean = true, line: Color? = null, border: Float = -1f): Modifier {
     val t = LocalTheme.current
     val shape: Shape = if (t.mono != 0) Chamfer(cut, left, right) else when (t.p.frameShape) {
         1 -> RoundedCornerShape(14.dp)
@@ -113,8 +114,12 @@ fun Modifier.panel(cut: Dp = 14.dp, left: Boolean = true, right: Boolean = true,
     val c = line ?: (if (t.mono == 0) t.line else t.ink.copy(alpha = 0.45f))
     var m = this.clip(shape)
         .background(if (t.mono == 0) Brush.verticalGradient(t.fillG) else SolidColor(t.panelG))
-    if (t.kind == 4) m = m.border(5.dp, c.copy(alpha = 0.18f), shape)   // SciFi: quầng sáng neon quanh khung
-    m = m.border(if (t.kind == 4) 1.5.dp else 2.dp, c, shape)
+    // Độ dày viền: border < 0 là mặc định của bộ giao diện; border = 0 là không viền
+    val bw = if (border >= 0f) border else if (t.kind == 4) 1.5f else 2f
+    if (bw > 0f) {
+        if (t.kind == 4) m = m.border((bw + 3.5f).dp, c.copy(alpha = 0.18f), shape)   // SciFi: quầng sáng neon quanh khung
+        m = m.border(bw.dp, c, shape)
+    }
     if (t.kind == 3) {   // Robot: hai đinh tán ở giữa hai cạnh bên
         m = m.drawBehind {
             val col = Color(0xFF9AA4B2)
@@ -139,7 +144,12 @@ fun HomeCluster(obd: ObdData, media: MediaInfo, onGrant: () -> Unit, nav: Nav) {
     val temp = if (ww != null) "${ww!!.temp}°C" else "--"
     val line = weatherLine(ww)
     val heading = rememberHeading()
-    val slots = parseHomeTiles(t.p.homeTiles)
+    val gps = rememberGps()
+    val tp by TpmsManager.wheels.collectAsState()
+    val cnt = t.p.homeCount.coerceIn(2, 10)
+    val slots = parseHomeTiles(t.p.homeTiles, cnt)
+    val styles = parseStyles(t.p.homeStyles)
+    val leftN = (cnt + 1) / 2
     Box(
         Modifier.fillMaxSize().drawBehind {
             drawRect(
@@ -181,12 +191,34 @@ fun HomeCluster(obd: ObdData, media: MediaInfo, onGrant: () -> Unit, nav: Nav) {
             // khung giữa kéo xuống sát mép dưới: ảnh xe phủ cả khung, 3 ô thông số mỗi bên nằm đè lên, cấp số ở giữa phía dưới
             Box(Modifier.fillMaxWidth().weight(1f).background(t.frameFillG)) {
                 CarPhoto(Modifier.fillMaxSize())
-                Row(Modifier.fillMaxSize().padding(8.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Column(Modifier.width(168.dp).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        for (i in 0..2) HomeSlot(slots[i], obd, Modifier.weight(1f).fillMaxWidth().movable("t$i"), true)
-                    }
-                    Column(Modifier.width(168.dp).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        for (i in 3..5) HomeSlot(slots[i], obd, Modifier.weight(1f).fillMaxWidth().movable("t$i"), false)
+                // Hai cột ô thông số: độ rộng theo màn hình, độ dày theo cài đặt (rất mỏng ... dày đầy hàng).
+                // Cột trái cắt góc bên phải, cột phải cắt góc bên trái; mỗi ô có kiểu hiển thị và cỡ riêng.
+                BoxWithConstraints(Modifier.fillMaxSize().padding(8.dp)) {
+                    val colW = (maxWidth * 0.26f).coerceIn(150.dp, 230.dp)
+                    val gap = 8.dp
+                    val factor = floatArrayOf(0.45f, 0.62f, 0.8f, 1f)[t.p.homeThick.coerceIn(0, 3)]
+                    val full = factor >= 1f
+                    val totalH = maxHeight
+                    Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Column(
+                            Modifier.width(colW).fillMaxHeight(),
+                            verticalArrangement = if (full) Arrangement.spacedBy(gap) else Arrangement.SpaceEvenly
+                        ) {
+                            val th = ((totalH - gap * (leftN - 1)) / leftN) * factor
+                            for (i in 0 until leftN) {
+                                HomeTile("t$i", slots[i], styles["t$i"] ?: t.p.homeStyle, obd, tp, gps, Modifier.height(th).fillMaxWidth().resizable("t$i").movable("t$i"), true)
+                            }
+                        }
+                        Column(
+                            Modifier.width(colW).fillMaxHeight(),
+                            verticalArrangement = if (full) Arrangement.spacedBy(gap) else Arrangement.SpaceEvenly
+                        ) {
+                            val rightN = cnt - leftN
+                            val th = ((totalH - gap * (rightN - 1)) / rightN) * factor
+                            for (i in leftN until cnt) {
+                                HomeTile("t$i", slots[i], styles["t$i"] ?: t.p.homeStyle, obd, tp, gps, Modifier.height(th).fillMaxWidth().resizable("t$i").movable("t$i"), false)
+                            }
+                        }
                     }
                 }
                 // cấp số: mặc định chỉ một chữ số to nghiêng kiểu thể thao; có thể chọn kiểu khác hoặc ẩn trong Cài đặt
@@ -200,39 +232,14 @@ fun HomeCluster(obd: ObdData, media: MediaInfo, onGrant: () -> Unit, nav: Nav) {
                     }
                 }
                 val editing by HomeEdit.on.collectAsState()
-                if (editing) HomeEditBar(Modifier.align(Alignment.Center))
+                val selTile by HomeEdit.selected.collectAsState()
+                if (editing) {
+                    val sid = selTile
+                    // Chạm một ô thì hiện bảng chọn thông số, kiểu và cỡ của ô đó; đóng bảng thì về thanh Xong / Đặt lại
+                    if (sid != null && sid.length >= 2 && sid[0] == 't' && sid.drop(1).all { it.isDigit() }) TileConfigPanel(sid, Modifier.align(Alignment.Center))
+                    else HomeEditBar(Modifier.align(Alignment.Center))
+                }
             }
-        }
-    }
-}
-
-// Một ô thông số ở trang 1 theo khoá đã chọn (xe chưa trả về thì hiện --)
-@Composable
-private fun HomeSlot(key: String, obd: ObdData, modifier: Modifier, cutRight: Boolean) {
-    val m = homeMetric(key)
-    val raw = if (obd.status == ObdManager.OK) homeMetricValue(obd, key) else null
-    val v = smoothF(raw ?: 0f, 220)
-    val has = raw != null
-    ClusterTile(
-        m.label, if (has) String.format(java.util.Locale.US, "%." + m.dec + "f", v) else "--", if (has) m.unit else "",
-        modifier, cutRight, warn = has && m.warn != null && raw!! >= m.warn, iconKey = key
-    )
-}
-
-// Ô chỉ số vát góc: nhãn xanh nhạt, giá trị trắng to (cam khi vượt ngưỡng), đơn vị nhỏ
-@Composable
-private fun ClusterTile(label: String, value: String, unit: String, modifier: Modifier, cutRight: Boolean, warn: Boolean = false, iconKey: String? = null) {
-    val t = LocalTheme.current
-    Box(modifier.panel(10.dp, left = !cutRight, right = cutRight, line = t.homeLineC)) {
-        if (iconKey != null) HomeGlyph(iconKey, if (warn) t.accent else t.hIcon, Modifier.align(Alignment.TopStart).padding(start = 16.dp, top = 10.dp).size(24.dp))
-        Text(
-            label, color = if (t.mono == 0) t.hLabel else t.muted, fontSize = 11.sp, lineHeight = 12.sp, fontWeight = FontWeight.SemiBold,
-            letterSpacing = 0.3.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center,
-            modifier = Modifier.align(Alignment.TopCenter).padding(top = 8.dp, start = 44.dp, end = 12.dp)
-        )
-        Row(Modifier.align(Alignment.Center).padding(top = 10.dp), verticalAlignment = Alignment.Bottom) {
-            Text(value, color = if (warn) t.accent else t.hInk, fontSize = 32.sp, lineHeight = 34.sp, fontWeight = FontWeight.Bold, maxLines = 1)
-            if (unit.isNotEmpty()) Text(unit, color = t.hInk, fontSize = 13.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 3.dp, bottom = 4.dp))
         }
     }
 }

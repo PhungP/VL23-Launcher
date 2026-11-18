@@ -4,6 +4,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -38,6 +39,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import kotlin.math.roundToInt
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import java.util.Locale
@@ -209,15 +211,20 @@ private fun TelemetryBody(obd: ObdData, nav: Nav, update: (UiPrefs) -> Unit, dig
             if (tiles.isEmpty()) {
                 Text(if (!ok) obd.status else if (enabled.isEmpty()) "Chưa chọn thông số nào. Chạm “Chọn thông số”." else "Đang đọc danh sách thông số từ xe…", color = t.muted, fontSize = 18.sp)
             } else {
+                // Số cột và kiểu hiển thị do người dùng chọn (Cài đặt > Trang OBD); kiểu 0 là thẻ gọn như các bản trước
+                val cols = t.p.obdCols.coerceIn(3, 6)
+                val styleSel = t.p.obdStyle.coerceIn(0, 6)
+                val itemH = (104 - (cols - 3) * 10).dp
                 LazyVerticalGrid(
-                    columns = GridCells.Fixed(4),
+                    columns = GridCells.Fixed(cols),
                     contentPadding = PaddingValues(vertical = 4.dp),
                     verticalArrangement = Arrangement.spacedBy(6.dp),
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                     modifier = Modifier.fillMaxSize()
                 ) {
                     items(tiles, key = { it.key }) { tl ->
-                        TileView(tl, valueOf(obd, tl.key) ?: 0f, peaks[tl.key], digital)
+                        if (styleSel == 0) TileView(tl, valueOf(obd, tl.key) ?: 0f, peaks[tl.key], digital)
+                        else StyledObdTile(tl, valueOf(obd, tl.key) ?: 0f, styleSel - 1, itemH)
                     }
                 }
             }
@@ -307,7 +314,7 @@ private fun TileView(tl: Tile, v0: Float, peak: Float?, digital: Boolean) {
     val hot = v >= tl.warn
     val barCol = if (hot) t.accent else t.accent2
     val hasBar = tl.hi > tl.lo
-    Column(Modifier.fillMaxWidth().card(RoundedCornerShape(10.dp)).padding(horizontal = 8.dp, vertical = 4.dp)) {
+    Column(Modifier.fillMaxWidth().card(RoundedCornerShape(10.dp), border = if (t.p.tileBorder == 2) -1f else tileBorderDp(t.p.tileBorder)).padding(horizontal = 8.dp, vertical = 4.dp)) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text(tl.label, color = t.muted, fontSize = 15.sp, maxLines = 1)
             Spacer(Modifier.weight(1f))
@@ -327,5 +334,24 @@ private fun TileView(tl: Tile, v0: Float, peak: Float?, digital: Boolean) {
                 drawRoundRect(barCol, Offset.Zero, Size(size.width * f, size.height), CornerRadius(size.height / 2))
             }
         }
+    }
+}
+
+// Ô thông số ở trang OBD theo kiểu hiển thị đã chọn (số, kim, cung, thanh, số điện tử, đồ thị), vẽ chung với ô ở trang 1
+@Composable
+private fun StyledObdTile(tl: Tile, v0: Float, style: Int, height: Dp) {
+    val t = LocalTheme.current
+    val sv = smoothF(v0, 240)
+    val v = if (tl.key == "runtime") v0 else sv
+    val warn = v >= tl.warn
+    val hasScale = tl.hi > tl.lo
+    val f = if (hasScale) ((v - tl.lo) / (tl.hi - tl.lo)).coerceIn(0f, 1f) else 0f
+    val m = HomeMetric(tl.key, tl.label, tl.unit, tl.dec, if (tl.warn == Float.MAX_VALUE) null else tl.warn, tl.lo, tl.hi)
+    val text = if (tl.key == "runtime") fmtTime(v) else fmt(v, tl.dec)
+    val pal = TilePal(t.ink, t.muted, t.accent2)
+    BoxWithConstraints(
+        Modifier.fillMaxWidth().height(height).card(RoundedCornerShape(10.dp), border = if (t.p.tileBorder == 2) -1f else tileBorderDp(t.p.tileBorder))
+    ) {
+        TileBody(style, tl.key, m, text, tl.unit, true, warn, v, f, tl.lo, tl.hi, pal, false, maxWidth.value, maxHeight.value)
     }
 }

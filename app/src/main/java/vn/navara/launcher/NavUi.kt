@@ -1,5 +1,8 @@
 package vn.navara.launcher
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import android.location.Location
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Canvas
@@ -27,6 +30,10 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.foundation.layout.fillMaxHeight
+import kotlinx.coroutines.launch
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -200,7 +207,36 @@ fun NavSearchOverlay(bg: Color, ink: Color, accent: Color, onAccent: Color, loc:
         Navigator.start(ctx, loc, p)
         onClose()
     }
-    fun doSearch() { warn = null; Navigator.search(q, loc) }
+    val scope = rememberCoroutineScope()
+    // Xử lý nội dung dán hoặc gõ vào: liên kết / toạ độ từ Google Maps dùng thẳng, còn lại tìm như địa chỉ thường
+    fun handleText(text: String) {
+        warn = "Đang đọc nội dung đã dán…"
+        scope.launch {
+            val r = PasteParser.parse(text)
+            warn = null
+            when {
+                r.place != null -> { q = r.place.name; Navigator.showPlace(r.place) }
+                r.query != null -> { q = r.query; Navigator.search(r.query, loc) }
+                else -> warn = r.error ?: "Không đọc được nội dung đã dán"
+            }
+        }
+    }
+    fun doSearch() {
+        warn = null
+        if (PasteParser.looksLikePaste(q)) handleText(q) else Navigator.search(q, loc)
+    }
+    // Nút Dán: lấy nội dung đã sao chép (địa chỉ, tên địa điểm, liên kết Chia sẻ của Google Maps) rồi tìm luôn
+    fun doPaste() {
+        val cm = ctx.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        val txt = try { cm.primaryClip?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.coerceToText(ctx)?.toString()?.trim().orEmpty() } catch (e: Exception) { "" }
+        if (txt.isEmpty()) { warn = "Chưa có gì được sao chép. Trong Google Maps hãy sao chép địa chỉ hoặc chọn Chia sẻ > Sao chép liên kết."; return }
+        handleText(txt)
+    }
+    fun doCopy(p: Place) {
+        val cm = ctx.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        cm.setPrimaryClip(ClipData.newPlainText("address", if (p.sub.isNotBlank() && !p.sub.startsWith(p.name)) p.name + ", " + p.sub else p.name))
+        warn = "Đã sao chép địa chỉ"
+    }
 
     val shape = RoundedCornerShape(12.dp)
     val shown = if (ns.results.isNotEmpty()) ns.results else if (q.isEmpty()) recent else emptyList()
@@ -228,6 +264,10 @@ fun NavSearchOverlay(bg: Color, ink: Color, accent: Color, onAccent: Color, loc:
                 )
             }
             Box(
+                Modifier.height(56.dp).clip(shape).border(2.dp, ink, shape).clickable { doPaste() }.padding(horizontal = 16.dp),
+                contentAlignment = Alignment.Center
+            ) { Text("Dán", color = ink, fontSize = 22.sp, fontWeight = FontWeight.Bold) }
+            Box(
                 Modifier.height(56.dp).clip(shape).background(accent).clickable { doSearch() }.padding(horizontal = 22.dp),
                 contentAlignment = Alignment.Center
             ) { Text("Tìm", color = onAccent, fontSize = 22.sp, fontWeight = FontWeight.Bold) }
@@ -242,11 +282,15 @@ fun NavSearchOverlay(bg: Color, ink: Color, accent: Color, onAccent: Color, loc:
         }
         LazyColumn(Modifier.fillMaxWidth().padding(top = 6.dp)) {
             items(shown) { p ->
-                Column(
-                    Modifier.fillMaxWidth().clickable { go(p) }.padding(vertical = 9.dp, horizontal = 4.dp)
-                ) {
-                    Text(p.name, color = ink, fontSize = 21.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text(p.sub, color = ink.copy(alpha = 0.65f), fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f).clickable { go(p) }.padding(vertical = 9.dp, horizontal = 4.dp)) {
+                        Text(p.name, color = ink, fontSize = 21.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(p.sub, color = ink.copy(alpha = 0.65f), fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
+                    // Sao chép địa chỉ để dán sang Google Maps hoặc ứng dụng khác
+                    Box(Modifier.size(48.dp).clip(shape).clickable { doCopy(p) }, contentAlignment = Alignment.Center) {
+                        Icon(Icons.Filled.ContentCopy, null, tint = ink.copy(alpha = 0.7f), modifier = Modifier.size(24.dp))
+                    }
                 }
                 Box(Modifier.fillMaxWidth().height(1.dp).background(ink.copy(alpha = 0.15f)))
             }

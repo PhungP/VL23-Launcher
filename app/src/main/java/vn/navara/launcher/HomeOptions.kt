@@ -9,6 +9,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -29,6 +33,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
@@ -81,7 +86,12 @@ import kotlin.math.sqrt
 val LocalPrefUpdate = staticCompositionLocalOf<(UiPrefs) -> Unit> { {} }
 
 // Chế độ sắp xếp trang 1 (bật từ Cài đặt, tắt bằng nút Xong)
-object HomeEdit { val on = MutableStateFlow(false) }
+object HomeEdit {
+    val on = MutableStateFlow(false)
+    val selected = MutableStateFlow<String?>(null)          // ô đang được chạm để cấu hình (t0, t1...)
+    val live = mutableStateMapOf<String, Offset>()          // kích thước đang kéo dở (hệ số rộng, cao) để thấy ngay khi kéo
+    fun finish() { on.value = false; selected.value = null; live.clear() }
+}
 
 fun parseOffsets(s: String): Map<String, Offset> = s.split(";").mapNotNull { e ->
     val kv = e.split("=")
@@ -93,6 +103,38 @@ fun parseOffsets(s: String): Map<String, Offset> = s.split(";").mapNotNull { e -
 }.toMap()
 
 fun offsetsToString(m: Map<String, Offset>): String = m.entries.joinToString(";") { it.key + "=" + it.value.x.toInt() + "," + it.value.y.toInt() }
+
+// Kích thước riêng từng ô: "t0=1.20,0.90" (hệ số rộng, cao so với ô gốc), dùng chung cách đọc với vị trí
+fun sizesToString(m: Map<String, Offset>): String =
+    m.entries.joinToString(";") { it.key + "=" + String.format(java.util.Locale.US, "%.2f,%.2f", it.value.x, it.value.y) }
+
+// Kiểu hiển thị riêng từng ô: "t0=1;t3=4"
+fun parseStyles(s: String): Map<String, Int> = s.split(";").mapNotNull { e ->
+    val kv = e.split("=")
+    val v = kv.getOrNull(1)?.toIntOrNull()
+    if (kv.size == 2 && v != null) kv[0] to v.coerceIn(0, TILE_STYLES.size - 1) else null
+}.toMap()
+
+fun stylesToString(m: Map<String, Int>): String = m.entries.joinToString(";") { it.key + "=" + it.value }
+
+// Đổi kích thước ô theo hệ số đã lưu (đang kéo dở thì theo giá trị kéo); ô giữ nguyên chỗ trong hàng và co giãn quanh tâm ô
+@Composable
+fun Modifier.resizable(id: String): Modifier {
+    val t = LocalTheme.current
+    val saved = parseOffsets(t.p.homeSizes)[id] ?: Offset(1f, 1f)
+    val s = HomeEdit.live[id] ?: saved
+    return this.layout { measurable, c ->
+        if (!c.hasBoundedWidth || !c.hasBoundedHeight) {
+            val p0 = measurable.measure(c)
+            layout(p0.width, p0.height) { p0.place(0, 0) }
+        } else {
+            val w = (c.maxWidth * s.x).roundToInt().coerceAtLeast(1)
+            val h = (c.maxHeight * s.y).roundToInt().coerceAtLeast(1)
+            val p = measurable.measure(Constraints.fixed(w, h))
+            layout(c.maxWidth, c.maxHeight) { p.place((c.maxWidth - w) / 2, (c.maxHeight - h) / 2) }
+        }
+    }
+}
 
 // Dịch ô theo vị trí đã lưu (dp). Đang ở chế độ sắp xếp thì có viền nổi bật và kéo được; kéo xong lưu ngay.
 @Composable
@@ -106,7 +148,9 @@ fun Modifier.movable(id: String): Modifier {
     var drag by remember(id, saved) { mutableStateOf(Offset.Zero) }
     var m = this.offset { IntOffset((saved.x * density + drag.x).roundToInt(), (saved.y * density + drag.y).roundToInt()) }
     if (editing) {
-        m = m.border(1.5.dp, t.accent).pointerInput(id, saved) {
+        m = m.border(1.5.dp, t.accent).pointerInput(id) {
+            detectTapGestures(onTap = { HomeEdit.selected.value = id })
+        }.pointerInput(id, saved) {
             detectDragGestures(
                 onDragEnd = {
                     val all = parseOffsets(cur.homeOffsets).toMutableMap()
@@ -129,11 +173,14 @@ fun HomeEditBar(modifier: Modifier) {
         modifier.clip(RoundedCornerShape(12.dp)).background(Color(0xE6101418)).border(2.dp, t.accent, RoundedCornerShape(12.dp)).padding(horizontal = 14.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Text("Kéo các ô để đổi vị trí", color = Color.White, fontSize = 17.sp, fontWeight = FontWeight.Bold)
-        Box(Modifier.clip(RoundedCornerShape(8.dp)).background(Color(0xFF2A313B)).clickable { upd(t.p.copy(homeOffsets = "")) }.padding(horizontal = 12.dp, vertical = 6.dp)) {
+        Column {
+            Text("Kéo ô để đổi chỗ, kéo ô vuông ở góc để đổi cỡ", color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+            Text("Chạm một ô để chọn thông số và kiểu hiển thị", color = Color(0xFFB8C0CC), fontSize = 13.sp)
+        }
+        Box(Modifier.clip(RoundedCornerShape(8.dp)).background(Color(0xFF2A313B)).clickable { upd(t.p.copy(homeOffsets = "", homeSizes = "", homeStyles = "")) }.padding(horizontal = 12.dp, vertical = 6.dp)) {
             Text("Đặt lại", color = Color.White, fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
         }
-        Box(Modifier.clip(RoundedCornerShape(8.dp)).background(t.accent).clickable { HomeEdit.on.value = false }.padding(horizontal = 14.dp, vertical = 6.dp)) {
+        Box(Modifier.clip(RoundedCornerShape(8.dp)).background(t.accent).clickable { HomeEdit.finish() }.padding(horizontal = 14.dp, vertical = 6.dp)) {
             Text("Xong", color = t.onAccent, fontSize = 17.sp, fontWeight = FontWeight.Bold)
         }
     }
@@ -141,49 +188,101 @@ fun HomeEditBar(modifier: Modifier) {
 
 // ---------- Thông số cho 6 ô ở trang 1 ----------
 
-class HomeMetric(val key: String, val label: String, val unit: String, val dec: Int, val warn: Float? = null)
-
-val HOME_METRICS = listOf(
-    HomeMetric("rpm", "RPM", "", 0),
-    HomeMetric("speed", "TỐC ĐỘ", "km/h", 0),
-    HomeMetric("load", "ENGINE LOAD", "%", 0),
-    HomeMetric("coolant", "NHIỆT ĐỘ NƯỚC", "°C", 0, 105f),
-    HomeMetric("boost", "TURBO BOOST", "BAR", 2),
-    HomeMetric("iat", "NHIỆT ĐỘ KHÍ NẠP", "°C", 0),
-    HomeMetric("volt", "ĐIỆN ÁP ẮC QUY", "V", 1),
-    HomeMetric("pedal", "CHÂN GA", "%", 0),
-    HomeMetric("torqueNm", "MÔ-MEN", "Nm", 0),
-    HomeMetric("power", "CÔNG SUẤT", "kW", 0),
-    HomeMetric("oil", "NHIỆT ĐỘ DẦU", "°C", 0, 120f),
-    HomeMetric("egt", "NHIỆT ĐỘ XẢ EGT", "°C", 0, 700f),
-    HomeMetric("map", "ÁP SUẤT HÚT", "kPa", 0),
-    HomeMetric("maf", "LƯU LƯỢNG KHÍ", "g/s", 1),
-    HomeMetric("fuelRate", "TIÊU THỤ", "L/h", 1),
-    HomeMetric("lper100", "TIÊU HAO", "L/100", 1),
-    HomeMetric("fuelLevel", "MỨC NHIÊN LIỆU", "%", 0),
-    HomeMetric("ambient", "NHIỆT ĐỘ NGOÀI", "°C", 0),
-    HomeMetric("throttle", "BƯỚM GA", "%", 0),
-    HomeMetric("timing", "ĐÁNH LỬA SỚM", "°", 1),
-    HomeMetric("stft", "NHIÊN LIỆU NGẮN HẠN", "%", 1),
-    HomeMetric("ltft", "NHIÊN LIỆU DÀI HẠN", "%", 1),
-    HomeMetric("catTemp", "NHIỆT ĐỘ XÚC TÁC", "°C", 0, 850f),
+// lo..hi: thang đo cho đồng hồ kim, cung, thanh và đồ thị (hi <= lo: không có thang, ô tự hiện dạng số)
+class HomeMetric(
+    val key: String, val label: String, val unit: String, val dec: Int, val warn: Float? = null,
+    val lo: Float = 0f, val hi: Float = 100f
 )
 
+val HOME_METRICS = listOf(
+    HomeMetric("rpm", "RPM", "", 0, lo = 0f, hi = 8000f),
+    HomeMetric("speed", "TỐC ĐỘ", "km/h", 0, hi = 200f),
+    HomeMetric("load", "ENGINE LOAD", "%", 0),
+    HomeMetric("coolant", "NHIỆT ĐỘ NƯỚC", "°C", 0, 105f, 40f, 120f),
+    HomeMetric("boost", "TURBO BOOST", "BAR", 2, hi = 2.5f),
+    HomeMetric("iat", "NHIỆT ĐỘ KHÍ NẠP", "°C", 0, lo = -10f, hi = 80f),
+    HomeMetric("volt", "ĐIỆN ÁP ẮC QUY", "V", 1, lo = 8f, hi = 16f),
+    HomeMetric("pedal", "CHÂN GA", "%", 0),
+    HomeMetric("torqueNm", "MÔ-MEN", "Nm", 0, hi = 500f),
+    HomeMetric("power", "CÔNG SUẤT", "kW", 0, hi = 200f),
+    HomeMetric("oil", "NHIỆT ĐỘ DẦU", "°C", 0, 120f, 40f, 140f),
+    HomeMetric("egt", "NHIỆT ĐỘ XẢ EGT", "°C", 0, 700f, 0f, 900f),
+    HomeMetric("map", "ÁP SUẤT HÚT", "kPa", 0, hi = 250f),
+    HomeMetric("maf", "LƯU LƯỢNG KHÍ", "g/s", 1, hi = 250f),
+    HomeMetric("fuelRate", "TIÊU THỤ", "L/h", 1, hi = 30f),
+    HomeMetric("lper100", "TIÊU HAO", "L/100", 1, hi = 30f),
+    HomeMetric("fuelLevel", "MỨC NHIÊN LIỆU", "%", 0),
+    HomeMetric("ambient", "NHIỆT ĐỘ NGOÀI", "°C", 0, lo = -10f, hi = 50f),
+    HomeMetric("throttle", "BƯỚM GA", "%", 0),
+    HomeMetric("timing", "ĐÁNH LỬA SỚM", "°", 1, lo = -10f, hi = 50f),
+    HomeMetric("stft", "NHIÊN LIỆU NGẮN HẠN", "%", 1, lo = -25f, hi = 25f),
+    HomeMetric("ltft", "NHIÊN LIỆU DÀI HẠN", "%", 1, lo = -25f, hi = 25f),
+    HomeMetric("catTemp", "NHIỆT ĐỘ XÚC TÁC", "°C", 0, 850f, 200f, 900f),
+    // Thông số bổ sung (chỉ hiện khi xe trả về giá trị)
+    HomeMetric("torque", "MÔ-MEN (%)", "%", 0),
+    HomeMetric("load04", "TẢI TÍNH TOÁN", "%", 0),
+    HomeMetric("abs43", "TẢI TUYỆT ĐỐI", "%", 0),
+    HomeMetric("relThrottle", "BƯỚM GA TƯƠNG ĐỐI", "%", 0),
+    HomeMetric("throttleCmd", "BƯỚM GA LỆNH", "%", 0),
+    HomeMetric("pedalE", "CHÂN GA (E)", "%", 0),
+    HomeMetric("egr", "EGR", "%", 0),
+    HomeMetric("lambda", "LAMBDA", "", 2, lo = 0.7f, hi = 1.3f),
+    HomeMetric("baro", "ÁP SUẤT KHÍ QUYỂN", "kPa", 0, lo = 80f, hi = 110f),
+    HomeMetric("ctrlVolt", "ĐIỆN ÁP ECU", "V", 1, lo = 8f, hi = 16f),
+    HomeMetric("rail", "ÁP SUẤT RAIL", "MPa", 0, hi = 200f),
+    HomeMetric("fuelPress", "ÁP SUẤT NHIÊN LIỆU", "kPa", 0, hi = 600f),
+    HomeMetric("injTiming", "GÓC PHUN", "°", 1, lo = -10f, hi = 30f),
+    HomeMetric("odo", "ODO", "km", 0, hi = 0f),
+    HomeMetric("distClear", "KM SAU XOÁ LỖI", "km", 0, hi = 0f),
+    HomeMetric("runtime", "THỜI GIAN CHẠY MÁY", "s", 0, hi = 0f),
+    // Từ GPS của đầu xe
+    HomeMetric("gpsSpeed", "TỐC ĐỘ GPS", "km/h", 0, hi = 200f),
+    HomeMetric("altitude", "ĐỘ CAO", "m", 0, lo = 0f, hi = 1500f),
+    // Áp suất và nhiệt độ lốp từ cảm biến TPMS mua ngoài (bật và gán cảm biến trong Cài đặt > TPMS). Thang đo tính theo bar.
+    HomeMetric("tpmsFL", "LỐP TRƯỚC TRÁI", "", 2, lo = 1f, hi = 3.5f),
+    HomeMetric("tpmsFR", "LỐP TRƯỚC PHẢI", "", 2, lo = 1f, hi = 3.5f),
+    HomeMetric("tpmsRL", "LỐP SAU TRÁI", "", 2, lo = 1f, hi = 3.5f),
+    HomeMetric("tpmsRR", "LỐP SAU PHẢI", "", 2, lo = 1f, hi = 3.5f),
+    HomeMetric("tpmsFLt", "NHIỆT ĐỘ LỐP TRƯỚC TRÁI", "°C", 0, 85f, 0f, 100f),
+    HomeMetric("tpmsFRt", "NHIỆT ĐỘ LỐP TRƯỚC PHẢI", "°C", 0, 85f, 0f, 100f),
+    HomeMetric("tpmsRLt", "NHIỆT ĐỘ LỐP SAU TRÁI", "°C", 0, 85f, 0f, 100f),
+    HomeMetric("tpmsRRt", "NHIỆT ĐỘ LỐP SAU PHẢI", "°C", 0, 85f, 0f, 100f),
+)
+
+fun isTpmsKey(key: String) = key.startsWith("tpms")
+fun isTpmsPressure(key: String) = key.startsWith("tpms") && !key.endsWith("t")
+
+// Thông số không phụ thuộc kết nối OBD (GPS, cảm biến lốp) vẫn có giá trị khi OBD chưa nối
+fun isObdFree(key: String) = isTpmsKey(key) || key == "gpsSpeed" || key == "altitude"
+
+// Thang đo thực tế: vòng tua theo hồ sơ xe; áp suất lốp theo đơn vị đang chọn
+fun metricRange(m: HomeMetric, tpmsUnit: Int): Pair<Float, Float> = when {
+    m.key == "rpm" -> 0f to Vehicles.current.rpmMax.toFloat()
+    isTpmsPressure(m.key) -> tpmsConv(m.lo, tpmsUnit) to tpmsConv(m.hi, tpmsUnit)
+    else -> m.lo to m.hi
+}
+
 // Thông số phù hợp với xe đang chọn (ví dụ xe hút khí tự nhiên không có boost, xe dầu không có hiệu chỉnh nhiên liệu xăng)
-fun homePool(v: VehicleProfile): List<HomeMetric> = HOME_METRICS.filter { it.key !in v.homeHide }
+fun homePool(v: VehicleProfile): List<HomeMetric> = HOME_METRICS.filter {
+    it.key !in v.homeHide &&
+        !(v.fuel == Fuel.PETROL && it.key in setOf("rail", "injTiming", "fuelPress")) &&
+        !(v.fuel == Fuel.DIESEL && it.key == "lambda")
+}
 
 val HOME_DEFAULT_TILES = listOf("rpm", "load", "coolant", "boost", "iat", "volt")
+private val HOME_EXTRA_TILES = listOf("speed", "pedal", "oil", "fuelLevel")   // ô thứ 7 đến 10 khi tăng số ô mà chưa chọn thông số
 
 fun homeMetric(key: String): HomeMetric = HOME_METRICS.firstOrNull { it.key == key } ?: HOME_METRICS[0]
 
-// Chuỗi đã lưu -> đúng 6 khoá hợp lệ (thiếu hoặc lạ thì lấy theo mặc định)
-fun parseHomeTiles(s: String): List<String> {
+// Chuỗi đã lưu -> đúng n khoá hợp lệ (thiếu hoặc lạ thì lấy theo mặc định)
+fun parseHomeTiles(s: String, n: Int = 6): List<String> {
     val got = s.split(",").map { it.trim() }
-    return List(6) { i -> got.getOrNull(i)?.takeIf { k -> HOME_METRICS.any { it.key == k } } ?: HOME_DEFAULT_TILES[i] }
+    val defs = HOME_DEFAULT_TILES + HOME_EXTRA_TILES
+    return List(n.coerceIn(2, 10)) { i -> got.getOrNull(i)?.takeIf { k -> HOME_METRICS.any { it.key == k } } ?: defs[i] }
 }
 
 // Giá trị hiện tại của một thông số; null = xe chưa trả về
-fun homeMetricValue(d: ObdData, key: String): Float? = when (key) {
+fun homeMetricValue(d: ObdData, key: String, tp: Map<String, TpmsWheel> = emptyMap(), gps: GpsState? = null): Float? = when (key) {
     "rpm" -> d.rpm.toFloat()
     "speed" -> d.speed.toFloat()
     "load" -> d.load?.toFloat()
@@ -192,7 +291,9 @@ fun homeMetricValue(d: ObdData, key: String): Float? = when (key) {
     "iat" -> d.intake?.toFloat() ?: d.ex["iat"]
     "volt" -> d.volt
     "ambient" -> d.ambient?.toFloat() ?: d.ex["ambient"]
-    else -> d.ex[key]
+    "gpsSpeed" -> if (gps != null && gps.fix) gps.kmh.toFloat() else null
+    "altitude" -> gps?.let { g -> val l = g.loc; if (l != null && g.fix && l.hasAltitude()) l.altitude.toFloat() else null }
+    else -> if (isTpmsKey(key)) tpmsValue(tp, key) else d.ex[key]
 }
 
 // Biểu tượng của từng thông số (hiện trong ô thông số ở trang 1)
@@ -215,6 +316,14 @@ fun homeIcon(key: String): ImageVector = when (key) {
     "ambient" -> Icons.Filled.WbSunny
     "timing" -> Icons.Filled.FlashOn
     "catTemp" -> Icons.Filled.Thermostat
+    "torque" -> Icons.Filled.RotateRight
+    "ctrlVolt" -> Icons.Filled.BatteryChargingFull
+    "baro" -> Icons.Filled.Compress
+    "rail", "fuelPress" -> Icons.Filled.LocalGasStation
+    "gpsSpeed" -> Icons.Filled.GpsFixed
+    "altitude" -> Icons.Filled.Terrain
+    "tpmsFLt", "tpmsFRt", "tpmsRLt", "tpmsRRt" -> Icons.Filled.Thermostat
+    "tpmsFL", "tpmsFR", "tpmsRL", "tpmsRR" -> Icons.Filled.Album
     else -> Icons.Filled.Tune
 }
 
