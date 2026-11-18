@@ -96,6 +96,12 @@ Launcher Android dành cho màn hình đầu máy trên ô tô (thiết kế cho
 ### 0.18
 - Google Maps: hiện thông báo "Đang tải" và nêu rõ lỗi do Google báo (ví dụ khoá sai loại, chưa bật Maps JavaScript API) thay vì để màn hình đen.
 
+### 0.19
+- Thêm công cụ bản đồ **MapLibre + Goong** (Cài đặt > Bản đồ > Công cụ bản đồ): vẽ bản đồ bằng style Goong với ba kiểu Đường phố, Sáng, Dẫn đường (ngày/đêm).
+- **Tìm địa chỉ bằng Goong Geocoding** với mọi công cụ bản đồ (kể cả MapLibre + MapTiler): nhập "API Key" của Goong, mỗi lần bấm Tìm tốn một lượt gọi, câu đã tìm được nhớ lại (30 câu gần nhất).
+- Tuỳ chọn **Chỉ đường bằng Goong** (Goong Direction, chỉ dẫn tiếng Việt của Goong); mặc định tắt, vẫn dùng OSRM để không tốn hạn mức.
+- Thông báo rõ khi Goong từ chối khoá hoặc hết hạn mức.
+
 ### 0.20
 - **Bỏ bản đồ Google Maps** (WebView). Cài đặt đã chọn Google Maps tự chuyển về MapLibre + MapTiler.
 - **Trang 1:** chọn số ô (2 đến 10), độ dày viền ô, chiều cao ô, 6 kiểu hiển thị (số, kim, cung, thanh, số điện tử, đồ thị), đổi cỡ từng ô và chọn thông số, kiểu riêng cho từng ô bằng cách chạm ô khi sắp xếp. Thêm hơn 20 thông số OBD, tốc độ và độ cao GPS.
@@ -104,12 +110,6 @@ Launcher Android dành cho màn hình đầu máy trên ô tô (thiết kế cho
 - **Bản đồ:** nút khoá / mở khoá cảm ứng ngay trên bản đồ (mở khoá thì kéo, zoom hai ngón và dùng nút + / − để zoom, tắt vuốt đổi trang; nút định vị để về xe).
 - **Tìm kiếm:** nút Dán nhận địa chỉ, toạ độ hoặc liên kết Google Maps (kể cả liên kết rút gọn maps.app.goo.gl) và dẫn thẳng tới đó khi đã có toạ độ; thêm nút sao chép địa chỉ ở mỗi kết quả.
 - **Độ phân giải:** tỉ lệ giao diện chỉnh được (80% đến 140%), cột thông số chia theo bề rộng màn hình, bản đồ MapLibre dùng đúng mật độ điểm ảnh nên chữ trên bản đồ cùng cỡ ở 800×480, 1280×720 và 1920×1080.
-
-### 0.19
-- Thêm công cụ bản đồ **MapLibre + Goong** (Cài đặt > Bản đồ > Công cụ bản đồ): vẽ bản đồ bằng style Goong với ba kiểu Đường phố, Sáng, Dẫn đường (ngày/đêm).
-- **Tìm địa chỉ bằng Goong Geocoding** với mọi công cụ bản đồ (kể cả MapLibre + MapTiler): nhập "API Key" của Goong, mỗi lần bấm Tìm tốn một lượt gọi, câu đã tìm được nhớ lại (30 câu gần nhất).
-- Tuỳ chọn **Chỉ đường bằng Goong** (Goong Direction, chỉ dẫn tiếng Việt của Goong); mặc định tắt, vẫn dùng OSRM để không tốn hạn mức.
-- Thông báo rõ khi Goong từ chối khoá hoặc hết hạn mức.
 
 ## Cập nhật
 
