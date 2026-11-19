@@ -17,7 +17,7 @@ Launcher Android dành cho màn hình đầu máy trên ô tô (thiết kế cho
   - Cấp số: **Số thể thao** (một chữ số to, nghiêng) hoặc **Ô cấp số**.
   - Màu chữ, màu viền hộp và màu số cấp chọn tự do trong 8 màu.
   - Sắp xếp kiểu Torque Pro (Cài đặt > Hình nền và khung > Sắp xếp các ô ở trang 1): kéo ô để đổi chỗ, kéo ô vuông ở góc để đổi cỡ, chạm ô để chọn thông số, kiểu hiển thị và cỡ riêng.
-- **Giao diện:** ba bộ **Đồng hồ**, **Robot**, **SciFi**; chỉnh cỡ chữ, tỉ lệ giao diện, kích thước biểu tượng, thứ tự các trang. Tự co giãn theo màn hình 800×480, 1280×720, 1920×1080...
+- **Giao diện:** ba bộ **Đồng hồ**, **Robot**, **SciFi**; chỉnh cỡ chữ, kích thước biểu tượng, thứ tự các trang. Chọn màn hình của xe: 800×480 (Navara) hoặc 1280×720 (Honda Accord).
 - **TPMS:** đọc cảm biến áp suất lốp mua ngoài qua Bluetooth (họ cảm biến nắp van TPMS1_...TPMS4_...), hiện áp suất và nhiệt độ từng lốp ở trang 1, cảnh báo khi ngoài ngưỡng.
 - **Hình nền và khung:** hình nền đen, địa hình, chuyển màu hoặc ảnh riêng (không áp dụng cho trang 1); độ trong suốt khung 5 mức; hình khung vát góc, bo tròn, lục giác hoặc vuông.
 - **Biểu tượng ứng dụng:** bộ biểu tượng Navara đồng nhất, biểu tượng gốc một màu trắng, hoặc xanh kết hợp trắng theo tông đồng hồ xe.
@@ -130,6 +130,14 @@ Launcher Android dành cho màn hình đầu máy trên ô tô (thiết kế cho
 
 ### 0.24
 - **Gemini:** khi Google báo quá tải hoặc lỗi máy chủ tạm thời (503...), app tự chờ rồi thử lại một lần, nếu vẫn lỗi thì thử tối đa hai mô hình Flash khác (chỉ dùng tạm cho câu hỏi đó, không đổi Cài đặt) trước khi báo lỗi.
+
+### 0.25
+- **Trợ lý AI nhiều dịch vụ:** ngoài Gemini, thêm các dịch vụ có gói miễn phí tương thích OpenAI: **Groq**, **OpenRouter**, **Mistral**, **Cerebras** và mục **Khác** (nhập địa chỉ API, khoá và mô hình bất kỳ). Người dùng tự nhập khoá từng dịch vụ và đổi được tên mô hình trong Cài đặt > Trợ lý AI.
+- Chọn **dịch vụ chính**; khi hết hạn mức, quá tải hoặc quá chậm (quá 25 giây) app tự chuyển sang dịch vụ khác đã nhập khoá (thứ tự Groq, Cerebras, Gemini, OpenRouter, Mistral, Khác) và ghi chú dịch vụ nào đã trả lời. Tắt được.
+- **Giọng nói:** ghi âm WAV; Gemini nghe trực tiếp, các dịch vụ khác dùng Whisper của Groq chuyển giọng nói thành chữ (cần khoá Groq).
+- **Màn hình:** chỉ còn hai lựa chọn, 800×480 (Navara) và 1280×720 (Honda Accord); đổi hồ sơ xe thì tự chọn theo.
+- **Trang 1:** tên bài hát và nghệ sĩ ở khung đang phát chạy chữ khi dài hơn khung.
+- Thêm `.gitignore` chuẩn cho Android (không đưa thư mục build, `.idea`, `local.properties`, khoá ký lên Git).
 
 ## Cập nhật
 

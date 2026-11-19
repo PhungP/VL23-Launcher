@@ -82,7 +82,7 @@ private fun parseGeminiPos(s: String): Offset {
 fun GeminiOverlay(obd: ObdData, nav: Nav, update: (UiPrefs) -> Unit) {
     val t = LocalTheme.current
     val p = t.p
-    if (p.geminiKey.isBlank()) return
+    if (!aiAny(p)) return
     var open by remember { mutableStateOf(false) }
     val curP by rememberUpdatedState(p)
     val dens = LocalDensity.current.density
@@ -147,26 +147,29 @@ private fun GeminiPanel(obd: ObdData, nav: Nav, update: (UiPrefs) -> Unit, onClo
     var busy by remember { mutableStateOf(false) }
     var answer by remember { mutableStateOf("") }
     var isError by remember { mutableStateOf(false) }
+    var note by remember { mutableStateOf("") }          // ghi chú khi phải dùng dịch vụ AI dự phòng
     var recording by remember { mutableStateOf(false) }
     val recorder = remember { VoiceRecorder(ctx) }
     DisposableEffect(Unit) { onDispose { recorder.cancel(); Navigator.stopSpeaking() } }
 
     fun speak(s: String) { if (p.geminiSpeak && s.isNotBlank()) Navigator.speakText(ctx, s) }
 
-    // Gọi Gemini; kết quả đi qua onText, lỗi hiện bằng chữ đỏ
-    fun ask(system: String, user: String, audio: ByteArray? = null, json: Boolean = false, onText: (String) -> Unit) {
+    // Gọi dịch vụ AI đã chọn (tự chuyển sang dịch vụ dự phòng khi cần); kết quả đi qua onText, lỗi hiện bằng chữ đỏ
+    fun ask(system: String, user: String, audio: ByteArray? = null, json: Boolean = false, withText: ((String) -> String)? = null, onText: (String) -> Unit) {
         if (busy) return
         busy = true
         answer = ""
+        note = ""
         isError = false
         Navigator.stopSpeaking()
         scope.launch {
-            val r = Gemini.ask(p.geminiKey, p.geminiModel, system, user, audio, json)
+            val r = Ai.ask(curP, system, user, audio, json, withText)
             busy = false
             val txt = r.text
-            // Mô hình đã cấu hình bị Google ngừng: app đã tự chọn mô hình mới, lưu lại cho lần sau
-            val used = r.model
+            // Mô hình Gemini đã cấu hình bị Google ngừng: app đã tự chọn mô hình mới, lưu lại cho lần sau
+            val used = r.geminiModel
             if (used != null && used != curP.geminiModel) update(curP.copy(geminiModel = used))
+            note = r.note.orEmpty()
             if (txt == null) { answer = r.error ?: "Lỗi không rõ"; isError = true } else onText(txt)
         }
     }
@@ -175,7 +178,7 @@ private fun GeminiPanel(obd: ObdData, nav: Nav, update: (UiPrefs) -> Unit, onClo
         val l = LocationHolder.loc.value
         val where = if (l != null) String.format(Locale.US, "Vị trí hiện tại của xe: %.5f, %.5f.\n", l.latitude, l.longitude) else "Chưa có vị trí GPS.\n"
         val user = where + (if (audio != null) "Yêu cầu của người dùng nằm trong đoạn ghi âm." else "Yêu cầu của người dùng: " + input)
-        ask(GEMINI_SYS_NAV, user, audio, true) { txt ->
+        ask(GEMINI_SYS_NAV, user, audio, true, withText = { t -> where + "Yêu cầu của người dùng: " + t }) { txt ->
             val j = try { JSONObject(txt.trim().removePrefix("```json").removePrefix("```").removeSuffix("```").trim()) } catch (e: Exception) { null }
             val q = j?.optString("query").orEmpty().trim()
             val say = j?.optString("say").orEmpty().trim()
@@ -189,9 +192,9 @@ private fun GeminiPanel(obd: ObdData, nav: Nav, update: (UiPrefs) -> Unit, onClo
     }
 
     fun sendCar(audio: ByteArray?) {
-        val user = "Số liệu xe hiện tại:\n" + geminiContext(obd, tp, p) + "\n\n" +
-            (if (audio != null) "Câu hỏi của người lái nằm trong đoạn ghi âm." else "Câu hỏi của người lái: " + input)
-        ask(GEMINI_SYS_CAR, user, audio) { txt -> answer = geminiClean(txt); speak(answer) }
+        val ctxText = "Số liệu xe hiện tại:\n" + geminiContext(obd, tp, p) + "\n\n"
+        val user = ctxText + (if (audio != null) "Câu hỏi của người lái nằm trong đoạn ghi âm." else "Câu hỏi của người lái: " + input)
+        ask(GEMINI_SYS_CAR, user, audio, withText = { t -> ctxText + "Câu hỏi của người lái: " + t }) { txt -> answer = geminiClean(txt); speak(answer) }
     }
 
     fun explain(list: List<String>) {
@@ -212,7 +215,7 @@ private fun GeminiPanel(obd: ObdData, nav: Nav, update: (UiPrefs) -> Unit, onClo
     }
 
     val micPerm = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        if (!granted) { answer = "Cần cấp quyền micro (Ghi âm) cho ứng dụng để nói với Gemini."; isError = true }
+        if (!granted) { answer = "Cần cấp quyền micro (Ghi âm) cho ứng dụng để nói với trợ lý AI."; isError = true }
     }
     fun finishVoice(b: ByteArray?) {
         recording = false
@@ -250,7 +253,7 @@ private fun GeminiPanel(obd: ObdData, nav: Nav, update: (UiPrefs) -> Unit, onClo
         ) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 Icon(Icons.Filled.AutoAwesome, null, tint = t.accent, modifier = Modifier.size(24.dp))
-                Text("Gemini", color = t.ink, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+                Text("Trợ lý AI", color = t.ink, fontSize = 22.sp, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.weight(1f))
                 GChip("Tìm đường", mode == 0) { mode = 0; answer = ""; isError = false }
                 GChip("Hỏi về xe", mode == 1) { mode = 1; answer = ""; isError = false }
@@ -281,7 +284,7 @@ private fun GeminiPanel(obd: ObdData, nav: Nav, update: (UiPrefs) -> Unit, onClo
                             modifier = Modifier.fillMaxWidth()
                         )
                     }
-                    if (mode != 2) {
+                    if (mode != 2 && aiVoiceOk(p)) {
                         Box(
                             Modifier.size(52.dp).clip(CircleShape).background(if (recording) Color(0xFFE8383D) else t.panelHi).clickable { toggleMic() },
                             contentAlignment = Alignment.Center
@@ -295,8 +298,9 @@ private fun GeminiPanel(obd: ObdData, nav: Nav, update: (UiPrefs) -> Unit, onClo
 
             Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (recording) Text("Đang nghe… bấm nút micro lần nữa khi nói xong.", color = t.accent, fontSize = 19.sp, fontWeight = FontWeight.Bold)
-                if (busy) Text("Đang hỏi Gemini…", color = t.muted, fontSize = 19.sp)
+                if (busy) Text("Đang hỏi trợ lý AI…", color = t.muted, fontSize = 19.sp)
                 if (answer.isNotBlank()) Text(answer, color = if (isError) Color(0xFFFF7A7A) else t.ink, fontSize = 19.sp)
+                if (note.isNotBlank()) Text(note, color = t.muted, fontSize = 15.sp)
 
                 when (mode) {
                     0 -> {

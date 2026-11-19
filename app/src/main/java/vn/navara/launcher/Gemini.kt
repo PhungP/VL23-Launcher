@@ -1,8 +1,10 @@
 package vn.navara.launcher
 
 import android.content.Context
+import android.annotation.SuppressLint
+import android.media.AudioFormat
+import android.media.AudioRecord
 import android.media.MediaRecorder
-import android.os.Build
 import android.util.Base64
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -10,7 +12,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
-import java.io.File
+import java.io.ByteArrayOutputStream
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
 import java.net.HttpURLConnection
 import java.net.URL
 import java.util.Locale
@@ -31,26 +35,27 @@ object Gemini {
     // rồi thử vài mô hình Flash khác, chỉ dùng tạm cho câu hỏi này, không đổi Cài đặt.
     suspend fun ask(
         key: String, model: String, system: String, user: String,
-        audio: ByteArray? = null, json: Boolean = false
+        audio: ByteArray? = null, json: Boolean = false, quick: Boolean = false
     ): GeminiResult {
+        // quick = true: còn dịch vụ AI dự phòng nên không chờ thử lại lâu ở đây, chuyển dịch vụ khác cho nhanh
         val m = model.trim().ifEmpty { DEFAULT_MODEL }
         var cur = m
-        var r = call(key, cur, system, user, audio, json)
+        var r = call(key, cur, system, user, audio, json, quick)
         if (r.notFound) {
             val alt = listFlash(key).firstOrNull()
             if (alt != null && alt != m) {
-                val r2 = call(key, alt, system, user, audio, json)
+                val r2 = call(key, alt, system, user, audio, json, quick)
                 if (r2.res.text != null) return GeminiResult(r2.res.text, null, alt)
                 cur = alt
                 r = r2
             }
         }
-        if (r.busy) {
+        if (r.busy && !quick) {
             delay(1500)
-            r = call(key, cur, system, user, audio, json)
+            r = call(key, cur, system, user, audio, json, quick)
             if (r.busy) {
                 for (a in listFlash(key).filter { it != cur }.take(2)) {
-                    val r2 = call(key, a, system, user, audio, json)
+                    val r2 = call(key, a, system, user, audio, json, quick)
                     if (r2.res.text != null) return GeminiResult(r2.res.text, null)
                     if (!r2.busy) break
                 }
@@ -96,12 +101,12 @@ object Gemini {
     }
 
     private suspend fun call(
-        key: String, m: String, system: String, user: String, audio: ByteArray?, json: Boolean
+        key: String, m: String, system: String, user: String, audio: ByteArray?, json: Boolean, quick: Boolean = false
     ): Call = withContext(Dispatchers.IO) {
         try {
             val parts = JSONArray()
             if (audio != null) {
-                parts.put(JSONObject().put("inline_data", JSONObject().put("mime_type", "audio/aac").put("data", Base64.encodeToString(audio, Base64.NO_WRAP))))
+                parts.put(JSONObject().put("inline_data", JSONObject().put("mime_type", "audio/wav").put("data", Base64.encodeToString(audio, Base64.NO_WRAP))))
             }
             parts.put(JSONObject().put("text", user))
             val gen = JSONObject().put("temperature", 0.4).put("maxOutputTokens", 2048)
@@ -113,7 +118,7 @@ object Gemini {
             val c = URL("https://generativelanguage.googleapis.com/v1beta/models/" + m + ":generateContent").openConnection() as HttpURLConnection
             c.requestMethod = "POST"
             c.connectTimeout = 15000
-            c.readTimeout = 45000
+            c.readTimeout = if (quick) 25000 else 45000
             c.doOutput = true
             c.setRequestProperty("Content-Type", "application/json")
             c.setRequestProperty("x-goog-api-key", key.trim())
@@ -147,26 +152,32 @@ object Gemini {
     }
 }
 
-// Ghi âm giọng nói từ micro của đầu xe (AAC 16 kHz, một kênh) để gửi cho Gemini
+// Ghi âm giọng nói từ micro của đầu xe: PCM 16 kHz, một kênh, đóng gói WAV (Gemini và Whisper của Groq đều đọc được)
 class VoiceRecorder(private val ctx: Context) {
-    private var rec: MediaRecorder? = null
-    private var file: File? = null
+    private var rec: AudioRecord? = null
+    private var thread: Thread? = null
+    private val pcm = ByteArrayOutputStream()
+    @Volatile private var running = false
 
+    @SuppressLint("MissingPermission")
     fun start(): Boolean {
         return try {
-            val f = File(ctx.cacheDir, "gemini_voice.aac")
-            val r = if (Build.VERSION.SDK_INT >= 31) MediaRecorder(ctx) else MediaRecorder()
-            r.setAudioSource(MediaRecorder.AudioSource.MIC)
-            r.setOutputFormat(MediaRecorder.OutputFormat.AAC_ADTS)
-            r.setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
-            r.setAudioSamplingRate(16000)
-            r.setAudioEncodingBitRate(48000)
-            r.setAudioChannels(1)
-            r.setOutputFile(f.absolutePath)
-            r.prepare()
-            r.start()
+            val rate = 16000
+            val min = AudioRecord.getMinBufferSize(rate, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT)
+            if (min <= 0) return false
+            val r = AudioRecord(MediaRecorder.AudioSource.MIC, rate, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT, min * 4)
+            if (r.state != AudioRecord.STATE_INITIALIZED) { r.release(); return false }
+            synchronized(pcm) { pcm.reset() }
+            r.startRecording()
             rec = r
-            file = f
+            running = true
+            thread = Thread {
+                val buf = ByteArray(min)
+                while (running) {
+                    val n = r.read(buf, 0, buf.size)
+                    if (n > 0) synchronized(pcm) { pcm.write(buf, 0, n) } else if (n < 0) break
+                }
+            }.also { it.start() }
             true
         } catch (e: Exception) {
             cancel()
@@ -174,27 +185,34 @@ class VoiceRecorder(private val ctx: Context) {
         }
     }
 
-    // Dừng ghi và trả về dữ liệu; null nếu lỗi hoặc ghi quá ngắn
+    // Dừng ghi và trả về tệp WAV; null nếu lỗi hoặc ghi quá ngắn (dưới khoảng 0,3 giây)
     fun stop(): ByteArray? {
         val r = rec ?: return null
+        running = false
+        try { thread?.join(600) } catch (e: Exception) { }
         rec = null
-        return try {
-            r.stop()
-            r.release()
-            file?.readBytes()
-        } catch (e: Exception) {
-            try { r.release() } catch (e2: Exception) { }
-            null
-        }
+        try { r.stop() } catch (e: Exception) { }
+        try { r.release() } catch (e: Exception) { }
+        val data = synchronized(pcm) { pcm.toByteArray() }
+        return if (data.size < 9000) null else wav(data, 16000)
     }
 
     fun cancel() {
+        running = false
         val r = rec
         rec = null
         if (r != null) {
             try { r.stop() } catch (e: Exception) { }
             try { r.release() } catch (e: Exception) { }
         }
+    }
+
+    private fun wav(pcm: ByteArray, rate: Int): ByteArray {
+        val h = ByteBuffer.allocate(44).order(ByteOrder.LITTLE_ENDIAN)
+        h.put("RIFF".toByteArray()).putInt(36 + pcm.size).put("WAVE".toByteArray()).put("fmt ".toByteArray())
+        h.putInt(16).putShort(1).putShort(1).putInt(rate).putInt(rate * 2).putShort(2).putShort(16)
+        h.put("data".toByteArray()).putInt(pcm.size)
+        return h.array() + pcm
     }
 }
 

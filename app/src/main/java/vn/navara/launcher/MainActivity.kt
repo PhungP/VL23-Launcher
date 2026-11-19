@@ -353,7 +353,10 @@ fun Root(applyBars: (Boolean) -> Unit) {
     BoxWithConstraints(Modifier.fillMaxSize().background(theme.bg)) {
         // Giao diện thiết kế trên khung 640×384 dp rồi co giãn theo độ phân giải: 800×480, 1280×720, 1920×1080... đều lấp đầy màn hình;
         // màn 16:9 có thêm chiều ngang nên các cột chia theo tỉ lệ. Người dùng chỉnh thêm tỉ lệ ở Cài đặt > Giao diện.
-        val d = minOf(constraints.maxWidth / 640f, constraints.maxHeight / 384f) * floatArrayOf(1f, 0.8f, 0.9f, 1.1f, 1.25f, 1.4f)[prefs.uiScale.coerceIn(0, 5)]
+        // Hai màn hình: 0 = 800×480 (Navara, tỉ lệ 5:3, khung thiết kế 640×384 dp), 1 = 1280×720 (Honda Accord, tỉ lệ 16:9, khung 683×384 dp).
+        // Khung thiết kế được co giãn vừa khít màn hình thật.
+        val refW = if (prefs.screenMode == 1) 682.67f else 640f
+        val d = minOf(constraints.maxWidth / refW, constraints.maxHeight / 384f)
         CompositionLocalProvider(LocalTheme provides theme, LocalDensity provides Density(d, theme.scale), LocalPrefUpdate provides update) {
             ProvideTextStyle(TextStyle(fontFamily = if (theme.mono == 0) ClusterFont else FontFamily.Default)) {
             Box(Modifier.fillMaxSize()) {
@@ -772,8 +775,15 @@ fun NowPlayingCard(media: MediaInfo, onGrant: () -> Unit) {
                 !media.hasAccess -> Text("Chạm để cấp quyền đọc nhạc đang phát", color = Ink, fontSize = 18.sp)
                 media.title.isEmpty() -> Text("Chưa có nhạc đang phát", color = Muted, fontSize = 18.sp)
                 else -> {
-                    Text(media.title, color = Ink, fontSize = 22.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text(media.artist, color = Muted, fontSize = 17.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    // Tên bài và nghệ sĩ dài hơn khung thì tự chạy chữ thay vì bị cắt bằng dấu "…"
+                    Text(
+                        media.title, color = Ink, fontSize = 22.sp, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false,
+                        modifier = Modifier.fillMaxWidth().basicMarquee(iterations = Int.MAX_VALUE, velocity = 40.dp)
+                    )
+                    Text(
+                        media.artist, color = Muted, fontSize = 17.sp, maxLines = 1, softWrap = false,
+                        modifier = Modifier.fillMaxWidth().basicMarquee(iterations = Int.MAX_VALUE, velocity = 40.dp)
+                    )
                     Spacer(Modifier.height(4.dp))
                     Bar(if (media.dur > 0) media.pos.toFloat() / media.dur else 0f)
                 }
@@ -1223,15 +1233,23 @@ fun Player(media: MediaInfo, modifier: Modifier, onGrant: () -> Unit) {
             if (art != null) Image(art, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
             else Icon(Icons.Filled.MusicNote, null, tint = Acc2, modifier = Modifier.size(36.dp))
         }
-        Text(
-            if (media.title.isEmpty()) "CHƯA CÓ NHẠC ĐANG PHÁT" else media.title.uppercase(),
-            color = Ink, fontSize = 21.sp, fontWeight = FontWeight.Bold, maxLines = 1,
-            overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 4.dp)
-        )
+        // Căn giữa khi ngắn, chạy chữ khi dài hơn khung
+        Box(Modifier.fillMaxWidth().padding(top = 4.dp), contentAlignment = Alignment.Center) {
+            Text(
+                if (media.title.isEmpty()) "CHƯA CÓ NHẠC ĐANG PHÁT" else media.title.uppercase(),
+                color = Ink, fontSize = 21.sp, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false,
+                modifier = Modifier.basicMarquee(iterations = Int.MAX_VALUE, velocity = 40.dp)
+            )
+        }
         if (!media.hasAccess) {
             Text("Chạm để cấp quyền đọc nhạc đang phát", color = Acc, fontSize = 17.sp, modifier = Modifier.clickable { onGrant() })
         } else {
-            Text(media.artist, color = Muted, fontSize = 18.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                Text(
+                    media.artist, color = Muted, fontSize = 18.sp, maxLines = 1, softWrap = false,
+                    modifier = Modifier.basicMarquee(iterations = Int.MAX_VALUE, velocity = 40.dp)
+                )
+            }
         }
         Row(Modifier.padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(22.dp), verticalAlignment = Alignment.CenterVertically) {
             Icon(Icons.Filled.SkipPrevious, null, tint = Ink, modifier = Modifier.size(44.dp).clickable { c?.transportControls?.skipToPrevious() })

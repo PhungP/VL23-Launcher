@@ -77,6 +77,9 @@ data class UiPrefs(
     val iconBlue: Boolean = false,      // biểu tượng ứng dụng: xanh kết hợp trắng theo tông đồng hồ xe
     val navVoice: Boolean = true,       // đọc chỉ dẫn dẫn đường bằng giọng nói
     val homeLayout: Int = 0,            // bố cục trang 1 (bộ Đồng hồ xe): 0 bố cục mới (ảnh xe + 6 ô), 1 thể thao (đồng hồ vòng tua dạng cung)
+    val aiProvider: Int = 0,            // dịch vụ AI chính: 0 Gemini, 1 Groq, 2 OpenRouter, 3 Mistral, 4 Cerebras, 5 tùy chỉnh (OpenAI tương thích)
+    val aiCfg: String = "",             // khoá, mô hình, địa chỉ của các dịch vụ 1..5 dạng JSON (Gemini dùng geminiKey / geminiModel)
+    val aiFallback: Boolean = true,     // tự chuyển sang dịch vụ AI khác đã nhập khoá khi hết hạn mức, quá tải hoặc quá chậm
     val geminiKey: String = "",         // khoá API Gemini (Google AI Studio) do người dùng nhập; trống = tắt nút Gemini
     val geminiModel: String = "gemini-3.8-flash",   // tên mô hình Gemini (khi mô hình bị Google ngừng, app tự chọn Flash mới nhất)
     val geminiSpeak: Boolean = true,    // đọc to câu trả lời của Gemini
@@ -89,7 +92,7 @@ data class UiPrefs(
     val homeStyle: Int = 0,             // kiểu hiển thị mặc định của ô: 0 số, 1 đồng hồ kim, 2 đồng hồ cung, 3 thanh, 4 số điện tử, 5 đồ thị
     val homeStyles: String = "",        // kiểu riêng từng ô: "t0=1;t3=4"
     val homeSizes: String = "",         // kích thước riêng từng ô (hệ số rộng, cao so với ô gốc): "t0=1.2,0.9"
-    val uiScale: Int = 0,               // tỉ lệ giao diện: 0 tự khớp màn hình (100%), 1..5 = 80%, 90%, 110%, 125%, 140%
+    val screenMode: Int = 0,            // màn hình xe: 0 = 800×480 (Navara), 1 = 1280×720 (Honda Accord)
     val tpmsOn: Boolean = false,        // đọc cảm biến áp suất lốp (TPMS) mua ngoài qua Bluetooth
     val tpmsUnit: Int = 0,              // đơn vị áp suất lốp: 0 bar, 1 psi, 2 kPa
     val tpmsMap: String = "",           // gán cảm biến cho bánh xe: "FL=AA:BB:CC:DD:EE:FF;FR=..." (FL trước trái, FR trước phải, RL sau trái, RR sau phải)
@@ -137,6 +140,9 @@ fun loadPrefs(c: Context): UiPrefs {
         mapTilt = s.getBoolean("mapTilt", d.mapTilt),
         homeLayout = s.getInt("homeLayout", d.homeLayout).coerceIn(0, 1),
         homeCount = s.getInt("homeCount", d.homeCount).coerceIn(2, 10),
+        aiProvider = s.getInt("aiProvider", d.aiProvider).coerceIn(0, 5),
+        aiCfg = s.getString("aiCfg", d.aiCfg) ?: d.aiCfg,
+        aiFallback = s.getBoolean("aiFallback", d.aiFallback),
         geminiKey = s.getString("geminiKey", d.geminiKey) ?: d.geminiKey,
         // "gemini-2.5-flash" là mặc định của bản 0.21, Google đã ngừng nên đổi sang mặc định mới
         geminiModel = (s.getString("geminiModel", d.geminiModel) ?: d.geminiModel).let { if (it.isBlank() || it == "gemini-2.5-flash") d.geminiModel else it },
@@ -149,7 +155,8 @@ fun loadPrefs(c: Context): UiPrefs {
         homeStyle = s.getInt("homeStyle", d.homeStyle).coerceIn(0, 5),
         homeStyles = s.getString("homeStyles", d.homeStyles) ?: d.homeStyles,
         homeSizes = s.getString("homeSizes", d.homeSizes) ?: d.homeSizes,
-        uiScale = s.getInt("uiScale", d.uiScale).coerceIn(0, 5),
+        // Máy chưa từng chọn: lấy theo hồ sơ xe đang dùng (Honda Accord = 1280×720, còn lại 800×480)
+        screenMode = if (s.contains("screenMode")) s.getInt("screenMode", 0).coerceIn(0, 1) else if ((s.getString("vehicle", "") ?: "").contains("honda")) 1 else 0,
         tpmsOn = s.getBoolean("tpmsOn", d.tpmsOn),
         tpmsUnit = s.getInt("tpmsUnit", d.tpmsUnit).coerceIn(0, 2),
         tpmsMap = s.getString("tpmsMap", d.tpmsMap) ?: d.tpmsMap,
@@ -189,8 +196,8 @@ fun savePrefs(c: Context, p: UiPrefs) {
         .putInt("mapEngine", p.mapEngine).putString("mapTilerKey", p.mapTilerKey).putInt("gearTrim", p.gearTrim)
         .putInt("skin", p.skin).putInt("mapTheme", p.mapTheme).putBoolean("mapTilt", p.mapTilt).putInt("homeLayout", p.homeLayout).putBoolean("navVoice", p.navVoice).putBoolean("iconBlue", p.iconBlue).putString("vehicle", p.vehicle).putInt("carPhoto", p.carPhoto).putInt("homeText", p.homeText).putInt("homeLine", p.homeLine).putInt("homeGear", p.homeGear).putString("goongMapKey", p.goongMapKey).putString("goongApiKey", p.goongApiKey).putBoolean("goongRoute", p.goongRoute).putInt("glass", p.glass).putInt("frameShape", p.frameShape).putString("homeOffsets", p.homeOffsets)
         .putInt("carImg", p.carImg).putInt("carVer", p.carVer).putInt("gearMode", p.gearStyle).putString("homeTiles", p.homeTiles)
-        .putInt("homeCount", p.homeCount).putString("geminiKey", p.geminiKey).putString("geminiModel", p.geminiModel).putBoolean("geminiSpeak", p.geminiSpeak).putString("geminiPos", p.geminiPos).putInt("tileBorder", p.tileBorder).putInt("obdStyle", p.obdStyle).putInt("obdCols", p.obdCols).putInt("homeThick", p.homeThick).putInt("homeStyle", p.homeStyle)
-        .putString("homeStyles", p.homeStyles).putString("homeSizes", p.homeSizes).putInt("uiScale", p.uiScale)
+        .putInt("homeCount", p.homeCount).putInt("aiProvider", p.aiProvider).putString("aiCfg", p.aiCfg).putBoolean("aiFallback", p.aiFallback).putString("geminiKey", p.geminiKey).putString("geminiModel", p.geminiModel).putBoolean("geminiSpeak", p.geminiSpeak).putString("geminiPos", p.geminiPos).putInt("tileBorder", p.tileBorder).putInt("obdStyle", p.obdStyle).putInt("obdCols", p.obdCols).putInt("homeThick", p.homeThick).putInt("homeStyle", p.homeStyle)
+        .putString("homeStyles", p.homeStyles).putString("homeSizes", p.homeSizes).putInt("screenMode", p.screenMode)
         .putBoolean("tpmsOn", p.tpmsOn).putInt("tpmsUnit", p.tpmsUnit).putString("tpmsMap", p.tpmsMap)
         .putBoolean("tpmsAbs", p.tpmsAbs).putInt("tpmsTrim", p.tpmsTrim).putInt("tpmsLow", p.tpmsLow).putInt("tpmsHigh", p.tpmsHigh).apply()
 }

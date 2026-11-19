@@ -369,10 +369,10 @@ fun SettingsScreen(
                     choice("Cỡ chữ", listOf("Nhỏ", "Vừa", "Lớn", "Rất lớn"), p.textSize) { onChange(p.copy(textSize = it)) }
                     val dm = ctx.resources.displayMetrics
                     choice(
-                        "Tỉ lệ giao diện", listOf("100%", "80%", "90%", "110%", "125%", "140%"), p.uiScale,
-                        "Giao diện tự co giãn vừa màn hình (800×480, 1280×720, 1920×1080...). Màn hình hiện tại " + maxOf(dm.widthPixels, dm.heightPixels) + "×" + minOf(dm.widthPixels, dm.heightPixels) +
-                            " điểm ảnh. Chọn tỉ lệ nhỏ hơn 100% nếu muốn chữ và nút nhỏ lại để hiện được nhiều hơn, lớn hơn 100% nếu muốn dễ nhìn hơn."
-                    ) { onChange(p.copy(uiScale = it)) }
+                        "Màn hình", listOf("800×480 (Navara)", "1280×720 (Honda Accord)"), p.screenMode,
+                        "Chọn đúng màn hình của xe để giao diện vừa khít khung. Màn hình hiện tại " + maxOf(dm.widthPixels, dm.heightPixels) + "×" + minOf(dm.widthPixels, dm.heightPixels) +
+                            " điểm ảnh. Đổi hồ sơ xe ở nhóm Hồ sơ xe sẽ tự chọn màn hình tương ứng."
+                    ) { onChange(p.copy(screenMode = it)) }
                     choice("Kích thước icon", listOf("Nhỏ", "Vừa", "Lớn", "Rất lớn"), p.iconSize) { onChange(p.copy(iconSize = it)) }
                     tg("Biểu tượng Navara đồng nhất", p.navaraIcons) { onChange(p.copy(navaraIcons = it)) }
                     if (!p.navaraIcons) tg("Biểu tượng gốc một màu trắng", p.whiteIcons) { onChange(p.copy(whiteIcons = it)) }
@@ -389,7 +389,7 @@ fun SettingsScreen(
                             if (sel) Text("Đang dùng", color = t.accent, fontSize = 18.sp, fontWeight = FontWeight.Bold)
                             else Btn("Chọn") {
                                 // Áp dụng hồ sơ: giao diện, ảnh xe, 6 ô thông số, thông số ở trang OBD và bảng tỉ số hộp số
-                                onChange(p.copy(vehicle = v.id, skin = v.skin, homeTiles = v.homeTiles, carImg = 0, carPhoto = 0, homeOffsets = "", homeSizes = "", homeStyles = "", obdTiles = "", gearTrim = 2))
+                                onChange(p.copy(vehicle = v.id, screenMode = if (v.id.startsWith("honda")) 1 else if (v.id.startsWith("nissan")) 0 else p.screenMode, skin = v.skin, homeTiles = v.homeTiles, carImg = 0, carPhoto = 0, homeOffsets = "", homeSizes = "", homeStyles = "", obdTiles = "", gearTrim = 2))
                             }
                         }
                     }
@@ -504,17 +504,30 @@ fun SettingsScreen(
                     choice("Số cột thông số", listOf("3", "4", "5", "6"), p.obdCols.coerceIn(3, 6) - 3, "Ít cột thì ô to, dễ nhìn; nhiều cột thì hiện được nhiều thông số cùng lúc. Độ dày viền chỉnh ở nhóm Trang 1.") { onChange(p.copy(obdCols = it + 3)) }
                 }
 
-                Group("Gemini AI (trợ lý giọng nói)") {
+                Group("Trợ lý AI (Gemini và dịch vụ miễn phí khác)") {
                     note(
-                        "Dán khoá API Gemini của bạn (tạo miễn phí tại aistudio.google.com/apikey) để hiện nút Gemini nổi trên mọi trang. " +
-                            "Nút này giúp: nói để tìm đường, hỏi về tình trạng xe, giải thích mã lỗi đọc từ xe, nhận xét chuyến đi. " +
-                            "Khoá chỉ lưu trên máy bạn. Tên mô hình để mặc định là được: nếu Google ngừng mô hình đó, app tự chọn mô hình Flash mới nhất. Khi dùng, câu hỏi hoặc đoạn ghi âm, vị trí xe (khi tìm đường) và số liệu xe hiện có được gửi tới Google. " +
+                        "Nhập khoá API của một hoặc nhiều dịch vụ để hiện nút AI nổi trên mọi trang: nói để tìm đường, hỏi về tình trạng xe, giải thích mã lỗi, nhận xét chuyến đi. " +
+                            "Dịch vụ chính được hỏi trước; nếu hết hạn mức, quá tải hoặc quá chậm, app tự chuyển sang dịch vụ khác đã nhập khoá. " +
+                            "Khoá chỉ lưu trên máy bạn. Khi dùng, câu hỏi hoặc đoạn ghi âm, vị trí xe (khi tìm đường) và số liệu xe hiện có được gửi tới dịch vụ đang dùng. " +
                             "Câu trả lời của AI chỉ để tham khảo, không thay thế thợ kỹ thuật; khi có đèn cảnh báo nghiêm trọng hãy dừng xe ở nơi an toàn."
                     )
-                    full { bg -> Line(bg, "Khoá API Gemini") { Box(Modifier.width(300.dp)) { KeyField(p.geminiKey, "Dán khoá API Gemini vào đây") { onChange(p.copy(geminiKey = it)) } } } }
-                    full { bg -> Line(bg, "Mô hình Gemini") { Box(Modifier.width(300.dp)) { KeyField(p.geminiModel, "gemini-3.8-flash") { onChange(p.copy(geminiModel = it)) } } } }
+                    val sel = AI_PROVIDERS[p.aiProvider.coerceIn(0, AI_PROVIDERS.size - 1)]
+                    choice(
+                        "Dịch vụ chính", AI_PROVIDERS.map { it.short + (if (aiReady(p, it.id)) " ✓" else "") }, sel.id,
+                        "Dấu ✓ là dịch vụ đã nhập khoá. Chọn từng dịch vụ để nhập khoá của nó."
+                    ) { onChange(p.copy(aiProvider = it)) }
+                    note(sel.title + ": " + sel.note + (if (sel.keyUrl.isNotEmpty()) " Lấy khoá tại " + sel.keyUrl + "." else ""))
+                    full { bg -> Line(bg, "Khoá API " + sel.short) { Box(Modifier.width(300.dp)) { KeyField(aiKey(p, sel.id), "Dán khoá API vào đây") { onChange(p.withAi(sel.id, key = it)) } } } }
+                    full { bg -> Line(bg, "Mô hình") { Box(Modifier.width(300.dp)) { KeyField(aiModelRaw(p, sel.id), if (sel.defModel.isEmpty()) "Tên mô hình" else sel.defModel) { onChange(p.withAi(sel.id, model = it)) } } } }
+                    if (sel.id == 5) {
+                        full { bg -> Line(bg, "Địa chỉ API") { Box(Modifier.width(300.dp)) { KeyField(aiUrl(p, 5), "https://.../v1") { onChange(p.withAi(5, url = it)) } } } }
+                    }
+                    if (!aiReady(p, 1)) {
+                        note("Muốn nói bằng micro: cần khoá Gemini (nghe trực tiếp) hoặc khoá Groq (chuyển giọng nói thành chữ miễn phí). Không có thì chỉ gõ chữ.")
+                    }
+                    tg("Tự chuyển dịch vụ khác khi hết hạn mức, quá tải hoặc quá chậm", p.aiFallback) { onChange(p.copy(aiFallback = it)) }
                     tg("Đọc to câu trả lời", p.geminiSpeak) { onChange(p.copy(geminiSpeak = it)) }
-                    if (p.geminiPos.isNotEmpty()) line("Đưa nút Gemini về vị trí mặc định") { Btn("Đặt lại") { onChange(p.copy(geminiPos = "")) } }
+                    if (p.geminiPos.isNotEmpty()) line("Đưa nút AI về vị trí mặc định") { Btn("Đặt lại") { onChange(p.copy(geminiPos = "")) } }
                 }
 
                 Group("TPMS: áp suất lốp (cảm biến mua ngoài)") {
