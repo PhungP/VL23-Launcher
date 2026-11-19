@@ -5,6 +5,7 @@ import android.media.MediaRecorder
 import android.os.Build
 import android.util.Base64
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
@@ -26,39 +27,56 @@ object Gemini {
     const val DEFAULT_MODEL = "gemini-3.8-flash"
 
     // audio: đoạn ghi âm AAC gửi kèm (Gemini tự nghe và hiểu tiếng Việt); json = true thì ép trả về JSON
+    // Lỗi tạm thời được xử lý tự động: mô hình bị ngừng (404) thì chọn Flash mới nhất và lưu lại; Google quá tải (5xx) thì thử lại một lần
+    // rồi thử vài mô hình Flash khác, chỉ dùng tạm cho câu hỏi này, không đổi Cài đặt.
     suspend fun ask(
         key: String, model: String, system: String, user: String,
         audio: ByteArray? = null, json: Boolean = false
     ): GeminiResult {
         val m = model.trim().ifEmpty { DEFAULT_MODEL }
-        val r = call(key, m, system, user, audio, json)
+        var cur = m
+        var r = call(key, cur, system, user, audio, json)
         if (r.notFound) {
-            val alt = pickModel(key)
+            val alt = listFlash(key).firstOrNull()
             if (alt != null && alt != m) {
                 val r2 = call(key, alt, system, user, audio, json)
                 if (r2.res.text != null) return GeminiResult(r2.res.text, null, alt)
-                return r2.res
+                cur = alt
+                r = r2
+            }
+        }
+        if (r.busy) {
+            delay(1500)
+            r = call(key, cur, system, user, audio, json)
+            if (r.busy) {
+                for (a in listFlash(key).filter { it != cur }.take(2)) {
+                    val r2 = call(key, a, system, user, audio, json)
+                    if (r2.res.text != null) return GeminiResult(r2.res.text, null)
+                    if (!r2.busy) break
+                }
             }
         }
         return r.res
     }
 
-    private class Call(val res: GeminiResult, val notFound: Boolean)
+    // busy: Google báo quá tải hoặc lỗi máy chủ tạm thời (500, 502, 503, 504)
+    private class Call(val res: GeminiResult, val notFound: Boolean, val busy: Boolean = false)
 
-    // Hỏi Google danh sách mô hình và chọn mô hình Flash mới nhất hỗ trợ generateContent (bỏ lite, ảnh, giọng nói, live, nhúng...)
-    private suspend fun pickModel(key: String): String? = withContext(Dispatchers.IO) {
+    // Hỏi Google danh sách mô hình, trả về các mô hình Flash hỗ trợ generateContent theo thứ tự ưu tiên:
+    // mới nhất và ổn định trước, bản lite xếp sau cùng (bỏ ảnh, giọng nói, live, nhúng...)
+    private suspend fun listFlash(key: String): List<String> = withContext(Dispatchers.IO) {
         try {
             val c = URL("https://generativelanguage.googleapis.com/v1beta/models?pageSize=200").openConnection() as HttpURLConnection
             c.connectTimeout = 15000
             c.readTimeout = 20000
             c.setRequestProperty("x-goog-api-key", key.trim())
-            if (c.responseCode !in 200..299) { c.disconnect(); return@withContext null }
+            if (c.responseCode !in 200..299) { c.disconnect(); return@withContext emptyList<String>() }
             val txt = c.inputStream.bufferedReader().use { it.readText() }
             c.disconnect()
-            val arr = JSONObject(txt).optJSONArray("models") ?: return@withContext null
-            val bad = listOf("lite", "image", "tts", "live", "audio", "embedding", "robotics", "omni", "computer", "thinking", "learnlm", "gemma")
-            var best: String? = null
-            var bestScore = -1.0
+            val arr = JSONObject(txt).optJSONArray("models") ?: return@withContext emptyList<String>()
+            val bad = listOf("image", "tts", "live", "audio", "embedding", "robotics", "omni", "computer", "thinking", "learnlm", "gemma")
+            val normal = ArrayList<Pair<String, Double>>()
+            val lite = ArrayList<Pair<String, Double>>()
             for (i in 0 until arr.length()) {
                 val o = arr.getJSONObject(i)
                 val id = o.optString("name").removePrefix("models/")
@@ -69,10 +87,12 @@ object Gemini {
                 val ver = Regex("""gemini-(\d+(?:\.\d+)?)""").find(id)?.groupValues?.get(1)?.toDoubleOrNull() ?: continue
                 // Cùng phiên bản thì ưu tiên bản ổn định hơn bản preview / thử nghiệm
                 val score = ver * 10.0 + (if (id.contains("preview") || id.contains("exp")) 0.0 else 1.0)
-                if (score > bestScore) { bestScore = score; best = id }
+                if (id.contains("lite")) lite.add(id to score) else normal.add(id to score)
             }
-            best
-        } catch (e: Exception) { null }
+            normal.sortByDescending { it.second }
+            lite.sortByDescending { it.second }
+            normal.map { it.first } + lite.map { it.first }
+        } catch (e: Exception) { emptyList<String>() }
     }
 
     private suspend fun call(
@@ -101,7 +121,7 @@ object Gemini {
             val code = c.responseCode
             val txt = (if (code in 200..299) c.inputStream else c.errorStream)?.bufferedReader()?.use { it.readText() } ?: ""
             c.disconnect()
-            if (code !in 200..299) return@withContext Call(GeminiResult(null, errText(code, txt, m)), code == 404)
+            if (code !in 200..299) return@withContext Call(GeminiResult(null, errText(code, txt, m)), code == 404, code == 500 || code == 502 || code == 503 || code == 504)
             val cand = JSONObject(txt).optJSONArray("candidates")?.optJSONObject(0)
             val ps = cand?.optJSONObject("content")?.optJSONArray("parts")
             val sb = StringBuilder()
@@ -121,7 +141,7 @@ object Gemini {
             code == 401 || code == 403 -> "Gemini từ chối khoá API (sai khoá, hoặc khoá chưa được phép dùng Gemini API)."
             code == 404 -> "Không tìm thấy mô hình \"" + model + "\". Kiểm tra tên mô hình trong Cài đặt (mặc định " + DEFAULT_MODEL + ")."
             code == 429 -> "Đã hết hạn mức Gemini hoặc gọi quá nhanh. Chờ ít phút rồi thử lại."
-            code >= 500 -> "Gemini đang quá tải, thử lại sau."
+            code >= 500 -> "Gemini đang quá tải (app đã tự thử lại và thử mô hình khác). Thử lại sau ít phút."
             else -> "Gemini báo lỗi " + code + (if (msg.isNotBlank()) ": " + msg.take(160) else "")
         }
     }

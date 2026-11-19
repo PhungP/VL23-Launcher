@@ -128,6 +128,9 @@ Launcher Android dành cho màn hình đầu máy trên ô tô (thiết kế cho
 - **Trang nhạc:** tên bài hát và album dài không còn bị giảm cỡ chữ hay ẩn đi; chữ luôn một dòng, cỡ cố định và tự chạy ngang (marquee) khi dài hơn khung. Nghệ sĩ cũng chạy chữ khi dài. Dòng thời gian bài hát vẫn luôn hiện đủ.
 - **README:** sắp lại lịch sử thay đổi theo thứ tự từ phiên bản cũ đến mới.
 
+### 0.24
+- **Gemini:** khi Google báo quá tải hoặc lỗi máy chủ tạm thời (503...), app tự chờ rồi thử lại một lần, nếu vẫn lỗi thì thử tối đa hai mô hình Flash khác (chỉ dùng tạm cho câu hỏi đó, không đổi Cài đặt) trước khi báo lỗi.
+
 ## Cập nhật
 
 Vào **Cài đặt > Cập nhật ứng dụng**. Ứng dụng so sánh phiên bản đang cài với bản mới nhất trên GitHub Releases, tải file `.apk` đính kèm và gọi trình cài đặt của Android.
