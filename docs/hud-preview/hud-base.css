@@ -1,0 +1,102 @@
+/* ===== HUD Dashboard: bố cục dùng chung cho cả 3 theme =====
+   Toàn bộ kích thước tính theo cqw (1% bề ngang khung 16:9) nên co giãn vừa mọi màn hình 16:9, kể cả toàn màn hình.
+   File này CHỈ chứa vị trí, cỡ chữ và nội dung. Màu sắc và khung viền nằm ở 3 file theme-*.css. */
+
+html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
+body { font-family: "Roboto Condensed", "Arial Narrow", "Segoe UI", Roboto, sans-serif; }
+button { font-family: inherit; }
+
+#wrap { position: fixed; inset: 0; box-sizing: border-box; padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px); display: flex; align-items: center; justify-content: center; background: #000; }
+
+#hud {
+  position: relative;
+  width: min(100vw, calc(100vh * 16 / 9));
+  aspect-ratio: 16 / 9;
+  container-type: inline-size;
+  overflow: hidden;
+  color: #fff;
+  background: #05080c;
+  user-select: none;
+}
+
+/* Ảnh xe duy nhất: vị trí cố định, không phụ thuộc theme */
+.car {
+  position: absolute; left: 22.5%; top: 30%; width: 54%; aspect-ratio: 835 / 435;
+  background: url(car.jpg) center / cover no-repeat;
+  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 9%, #000 91%, transparent 100%), linear-gradient(to bottom, transparent 0, #000 14%, #000 80%, transparent 100%);
+  -webkit-mask-composite: source-in;
+          mask-image: linear-gradient(to right, transparent 0, #000 9%, #000 91%, transparent 100%), linear-gradient(to bottom, transparent 0, #000 14%, #000 80%, transparent 100%);
+          mask-composite: intersect;
+  z-index: 1;
+}
+.car-smoke-fade { display: none; }
+
+.deco { display: none; position: absolute; inset: 0; pointer-events: none; z-index: 2; }
+
+/* ----- Nút chuyển theme [1] [2] [3] ----- */
+.theme-switch { position: absolute; top: .8cqw; left: 1cqw; display: flex; gap: .45cqw; z-index: 30; }
+.theme-switch button {
+  width: 2.3cqw; height: 2.3cqw; font-size: 1.3cqw; font-weight: 700; line-height: 1; padding: 0;
+  border-radius: .45cqw; cursor: pointer;
+  background: rgba(0, 0, 0, .6); color: rgba(255, 255, 255, .75); border: 1px solid rgba(255, 255, 255, .28);
+}
+.theme-switch button.on { background: var(--accent); color: #031014; border-color: var(--accent); box-shadow: 0 0 .8cqw var(--accent); }
+
+/* ----- Ô thông số: vị trí giữ nguyên ở mọi theme ----- */
+.tile { position: absolute; z-index: 5; color: var(--ink); --c: 1.3cqw; }
+.tile .frame { position: absolute; inset: 0; }
+.tile .frame::before, .tile .frame::after { content: ""; position: absolute; }
+.tile > :not(.frame) { position: absolute; }
+
+.t-time  { left: 3%;    top: 5.6%;  width: 22%;   height: 16%;  --c: 1.9cqw; }
+.t-music { left: 72.2%; top: 5.6%;  width: 25%;   height: 16.4%; --c: 1.9cqw; }
+
+.L1, .L2, .L3, .L4, .L5 { left: 3%;    width: 17.4%; }
+.R1, .R2, .R3, .R4, .R5 { left: 78.6%; width: 18.4%; }
+.L1, .R1 { top: 25.5%; height: 11.6%; }
+.L2, .R2 { top: 38.2%; height: 11.6%; }
+.L3, .R3 { top: 51%;   height: 11.6%; }
+.L4      { top: 63.8%; height: 11.6%; }
+.R4      { top: 63.8%; height: 13.6%; }
+.L5, .R5 { top: 83.2%; height: 11.4%; }
+
+.tile .ico { left: 1.9cqw; top: 50%; transform: translateY(-50%); width: 3.7cqw; height: 3.7cqw; color: var(--ico); }
+.tile .txt { left: 6.5cqw; right: .6cqw; top: 0; bottom: 0; display: flex; flex-direction: column; justify-content: center; }
+.tile .lbl { font-size: 1.12cqw; line-height: 1.1; font-weight: 700; letter-spacing: .01em; white-space: nowrap; color: var(--lbl); }
+.tile .lbl.two { white-space: normal; font-size: 1.05cqw; line-height: 1.12; }
+.tile .val { display: flex; align-items: baseline; white-space: nowrap; color: var(--ink); }
+.tile .val b { font-size: 3.5cqw; line-height: 1.05; font-weight: 700; }
+.tile .val i { font-style: normal; font-size: 1.75cqw; font-weight: 700; margin-left: .4cqw; color: var(--unit); }
+.tile .val.sm b { font-size: 3cqw; }
+.tile .val.sm i { font-size: 1.5cqw; }
+
+/* Thẻ thời tiết */
+.t-time .wx { left: 2.6cqw; top: 50%; transform: translateY(-50%); width: 4.7cqw; height: 4.1cqw; }
+.t-time .clock { left: 8.6cqw; top: 9%; font-size: 3.6cqw; line-height: 1.1; font-weight: 700; color: var(--ink); }
+.t-time .wx-line { left: 8.6cqw; top: 49%; font-size: 1.6cqw; font-weight: 700; color: var(--lbl); white-space: nowrap; }
+.t-time .loc { left: 8.6cqw; bottom: 9%; font-size: 1.6cqw; font-weight: 700; color: var(--lbl); white-space: nowrap; display: flex; align-items: center; gap: .5cqw; }
+.t-time .loc svg { width: 1.2cqw; height: 1.5cqw; color: var(--ico); }
+
+/* Thẻ nhạc */
+.t-music .note { left: 2.4cqw; top: 15%; width: 2.7cqw; height: 3.2cqw; color: var(--ico); }
+.t-music .song { left: 6.6cqw; top: 11%; font-size: 1.7cqw; font-weight: 700; white-space: nowrap; color: var(--ink); }
+.t-music .song-time { left: 6.6cqw; top: 35%; font-size: 1.3cqw; font-weight: 700; color: var(--lbl); opacity: .8; }
+.t-music .ctrl { left: 0; right: 0; bottom: 8%; display: flex; align-items: center; justify-content: center; gap: 1.3cqw; color: var(--ico); }
+.t-music .ctrl svg { width: 2.6cqw; height: 1.8cqw; }
+.t-music .ctrl .sep { width: .12cqw; height: 2.6cqw; background: var(--ico); opacity: .55; }
+.t-music .playbtn { width: 3.7cqw; height: 3.7cqw; display: flex; align-items: center; justify-content: center; }
+.t-music .playbtn svg { width: 1.9cqw; height: 1.9cqw; }
+
+/* RPM trên cùng */
+.rpm { position: absolute; left: 50%; top: 3.8%; width: 38%; height: 22%; transform: translateX(-50%); text-align: center; z-index: 6; }
+.rpm .shift { height: 19%; display: flex; align-items: center; justify-content: center; gap: .9cqw; font-size: 1.75cqw; font-weight: 700; letter-spacing: .12em; color: var(--shift); }
+.rpm .shift .dash { width: .8cqw; height: .28cqw; background: var(--shift); opacity: .9; }
+.rpm .rpm-val { font-size: 7.9cqw; line-height: .98; font-weight: 700; letter-spacing: .02em; color: var(--rpm); }
+.rpm .rpm-unit { font-size: 1.6cqw; font-weight: 700; margin-top: -.2cqw; color: var(--ink); }
+
+/* Số gear dưới cùng */
+.gear-box { position: absolute; left: 50%; top: 75%; width: 22%; height: 23%; transform: translateX(-50%); text-align: center; z-index: 8; }
+.gear-num { font-size: 12.5cqw; line-height: 1; font-weight: 700; font-style: italic; color: var(--gear); }
+.gear-lbl { display: none; }
+
+/* Mặc định ẩn các phần trang trí riêng; mỗi theme tự bật phần của mình */

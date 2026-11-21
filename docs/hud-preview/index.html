@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>HUD Dashboard - Honda Accord</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="hud-base.css">
+<link rel="stylesheet" href="theme-su35.css">
+<link rel="stylesheet" href="theme-orange.css">
+<link rel="stylesheet" href="theme-cyberpunk.css">
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-tyre" viewBox="0 0 48 48"><rect x="11" y="3" width="26" height="42" rx="9" fill="none" stroke="currentColor" stroke-width="3.2"/><path d="M11 12h8M11 20h8M11 28h8M11 36h8M29 12h8M29 20h8M29 28h8M29 36h8" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/><path d="M24 6v36" stroke="currentColor" stroke-width="2" stroke-dasharray="3 3"/></symbol>
+    <symbol id="i-gauge" viewBox="0 0 48 48"><path d="M6 36a18 18 0 1 1 36 0" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/><path d="M24 36l9-13" stroke="currentColor" stroke-width="3.2" stroke-linecap="round"/><circle cx="24" cy="36" r="3" fill="currentColor"/><path d="M10 28l3 1.5M15 18l2.5 2M24 13v3M33 18l-2.5 2M38 28l-3 1.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+    <symbol id="i-thermo" viewBox="0 0 48 48"><path d="M20 8a5 5 0 0 1 10 0v20a9 9 0 1 1-10 0z" fill="none" stroke="currentColor" stroke-width="3" transform="translate(-2 0)"/><circle cx="23" cy="35" r="4" fill="currentColor"/><path d="M23 14v19M34 12h6M34 18h6M34 24h6" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></symbol>
+    <symbol id="i-battery" viewBox="0 0 48 48"><rect x="5" y="14" width="38" height="24" rx="3" fill="none" stroke="currentColor" stroke-width="3"/><path d="M12 14v-4h8v4M28 14v-4h8v4" fill="none" stroke="currentColor" stroke-width="3"/><path d="M12 26h8M28 26h8M32 22v8" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></symbol>
+    <symbol id="i-fuel" viewBox="0 0 48 48"><path d="M10 42V10a3 3 0 0 1 3-3h13a3 3 0 0 1 3 3v32M7 42h25" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/><rect x="14" y="12" width="11" height="9" fill="none" stroke="currentColor" stroke-width="2.4"/><path d="M29 18l6 3v14a3 3 0 0 0 6 0V16l-5-5" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-cloud" viewBox="0 0 64 56"><circle cx="22" cy="20" r="8" fill="none" stroke="#ffd36a" stroke-width="3"/><path d="M22 5v4M8 20h4M10 8l3 3M36 8l-3 3" stroke="#ffd36a" stroke-width="3" stroke-linecap="round"/><path d="M18 46a9 9 0 0 1 1-18 12 12 0 0 1 23-2 10 10 0 0 1 2 20z" fill="#0d1620" stroke="#c9d6e2" stroke-width="3" stroke-linejoin="round"/></symbol>
+    <symbol id="i-pin" viewBox="0 0 32 40"><path d="M16 38S4 24 4 15a12 12 0 0 1 24 0c0 9-12 23-12 23z" fill="currentColor"/><circle cx="16" cy="15" r="5" fill="#0b1118"/></symbol>
+    <symbol id="i-note" viewBox="0 0 40 48"><path d="M14 36V8l22-5v30" fill="none" stroke="currentColor" stroke-width="4" stroke-linejoin="round"/><ellipse cx="9" cy="37" rx="7" ry="5.5" fill="currentColor"/><ellipse cx="31" cy="33" rx="7" ry="5.5" fill="currentColor"/></symbol>
+    <symbol id="i-prev" viewBox="0 0 48 32"><path d="M23 4v24L5 16zM43 4v24L25 16z" fill="currentColor"/></symbol>
+    <symbol id="i-next" viewBox="0 0 48 32"><path d="M25 4v24l18-12zM5 4v24l18-12z" fill="currentColor"/></symbol>
+    <symbol id="i-play" viewBox="0 0 32 32"><path d="M9 4v24l20-12z" fill="currentColor"/></symbol>
+    <symbol id="i-gear" viewBox="-50 -50 100 100"><path d="M36.0 0.0 L45.6 5.8 L42.4 17.8 L31.2 18.0 L31.2 18.0 L36.6 27.8 L27.8 36.6 L18.0 31.2 L18.0 31.2 L17.8 42.4 L5.8 45.6 L0.0 36.0 L0.0 36.0 L-5.8 45.6 L-17.8 42.4 L-18.0 31.2 L-18.0 31.2 L-27.8 36.6 L-36.6 27.8 L-31.2 18.0 L-31.2 18.0 L-42.4 17.8 L-45.6 5.8 L-36.0 0.0 L-36.0 0.0 L-45.6 -5.8 L-42.4 -17.8 L-31.2 -18.0 L-31.2 -18.0 L-36.6 -27.8 L-27.8 -36.6 L-18.0 -31.2 L-18.0 -31.2 L-17.8 -42.4 L-5.8 -45.6 L-0.0 -36.0 L-0.0 -36.0 L5.8 -45.6 L17.8 -42.4 L18.0 -31.2 L18.0 -31.2 L27.8 -36.6 L36.6 -27.8 L31.2 -18.0 L31.2 -18.0 L42.4 -17.8 L45.6 -5.8 L36.0 -0.0Z" fill="currentColor"/><circle r="17" fill="#0b1118"/><circle r="10" fill="none" stroke="currentColor" stroke-width="3.5"/><circle r="3.5" fill="currentColor"/></symbol>
+  </defs>
+</svg>
+
+<div id="wrap">
+<div id="hud" class="theme-su35" data-theme="1">
+
+  <!-- Ảnh xe duy nhất dùng chung cho cả 3 theme: không bao giờ đổi vị trí -->
+  <div class="car"></div>
+  <div class="car-smoke-fade"></div>
+
+  <!-- Nút chuyển theme -->
+  <div class="theme-switch" role="group" aria-label="Chọn giao diện HUD">
+    <button data-t="1" class="on" title="SU-35 Combat">1</button>
+    <button data-t="2" title="Orange Sport">2</button>
+    <button data-t="3" title="Cyberpunk Mechanical">3</button>
+  </div>
+
+  <!-- ===== Trang trí riêng của theme 1: SU-35 Combat ===== -->
+  <div class="deco deco-su35">
+    <div class="su-title">SU-35 // HND-ACCORD-2015 HUD SYSTEM</div>
+    <div class="su-combat"><span class="warn">&#9888;</span>COMBAT MODE - ACTIVE<span class="warn">&#9888;</span></div>
+    <svg class="su-reticle" viewBox="-100 -100 200 200">
+      <circle r="92" fill="none" stroke="currentColor" stroke-width=".6" stroke-dasharray="1.5 3" opacity=".8"/>
+      <circle r="62" fill="none" stroke="currentColor" stroke-width=".8" opacity=".55"/>
+      <circle r="36" fill="none" stroke="currentColor" stroke-width=".6" stroke-dasharray="4 3" opacity=".6"/>
+      <path d="M0-100v34M0 66v34M-100 0h34M66 0h34" stroke="currentColor" stroke-width="1"/>
+      <path d="M-78-60v-16h16M78-60v-16h-16M-78 60v16h16M78 60v16h-16" fill="none" stroke="currentColor" stroke-width="1.6"/>
+    </svg>
+    <div class="su-lock">LOCK &bull; TGT LOCKED</div>
+    <div class="su-scale">
+      <div class="bar"><i style="left:71.25%"></i></div>
+      <div class="nums"><span>2000</span><span>3000</span><span>4000</span><span>5000</span><span>6000</span></div>
+    </div>
+    <svg class="su-arc" viewBox="0 0 300 130"><defs><linearGradient id="sg" x1="0" x2="1"><stop offset="0" stop-color="#00f0ff"/><stop offset=".6" stop-color="#4dffb0"/><stop offset="1" stop-color="#7dffd0"/></linearGradient></defs>
+      <path d="M12 125A138 138 0 0 1 288 125" fill="none" stroke="url(#sg)" stroke-width="6" stroke-linecap="round" opacity=".9"/>
+      <path d="M26 125A124 124 0 0 1 274 125" fill="none" stroke="#00f0ff" stroke-width="1.2" stroke-dasharray="1.2 5" opacity=".9"/></svg>
+  </div>
+
+  <!-- ===== Trang trí riêng của theme 2: Orange Sport (mặt đồng hồ mờ phía sau xe) ===== -->
+  <div class="deco deco-orange">
+    <svg class="or-dial" viewBox="-100 -60 200 100">
+      <path d="M-96 36A98 98 0 0 1 96 36" fill="none" stroke="currentColor" stroke-width=".5" opacity=".7"/>
+      <path d="M-86 30A88 88 0 0 1 86 30" fill="none" stroke="currentColor" stroke-width=".25" stroke-dasharray="1 3" opacity=".6"/>
+      <g font-size="6" fill="currentColor" opacity=".5" text-anchor="middle" font-family="inherit">
+        <text x="-68" y="22">2000</text><text x="-52" y="2">2500</text><text x="-26" y="-30">3500</text><text x="36" y="-34">6000</text><text x="62" y="-10">6500</text>
+      </g>
+    </svg>
+  </div>
+
+  <!-- ===== Trang trí riêng của theme 3: Cyberpunk Mechanical ===== -->
+  <div class="deco deco-cyber">
+    <svg class="cy-circuit" viewBox="0 0 1600 900" preserveAspectRatio="none">
+      <g fill="none" stroke="#00e5ff" stroke-width="1.6" opacity=".55">
+        <path d="M330 300h40l24 24v120M330 520h30l20 20v90M1270 300h-40l-24 24v120M1270 520h-30l-20 20v90"/>
+        <path d="M60 250V150l26-26M1540 250V150l-26-26M360 700h110l24-24h160M1240 700h-110l-24-24h-160"/>
+      </g>
+      <g fill="#00e5ff" opacity=".8"><circle cx="330" cy="300" r="3"/><circle cx="330" cy="520" r="3"/><circle cx="1270" cy="300" r="3"/><circle cx="1270" cy="520" r="3"/><circle cx="394" cy="444" r="3"/><circle cx="1206" cy="444" r="3"/></g>
+    </svg>
+    <div class="cy-rpm-frame">
+      <svg class="cy-bot l" viewBox="0 0 100 100"><use href="#i-gear"/></svg>
+      <svg class="cy-bot r" viewBox="0 0 100 100"><use href="#i-gear"/></svg>
+    </div>
+    <div class="cy-mech">
+      <div class="piston l"></div><div class="piston r"></div>
+      <svg class="gear g1" viewBox="0 0 100 100"><use href="#i-gear"/></svg>
+      <svg class="gear g2" viewBox="0 0 100 100"><use href="#i-gear"/></svg>
+      <svg class="gear g3" viewBox="0 0 100 100"><use href="#i-gear"/></svg>
+      <div class="cy-core"></div>
+      <div class="cy-gear-title">HỘP SỐ HIỆN HÀNH</div>
+      <div class="cy-gear-mode">MODE: SPORT</div>
+    </div>
+  </div>
+
+  <!-- ===== Thông số: giống nhau ở cả 3 theme, chỉ khác màu và khung ===== -->
+  <div class="tile t-time">
+    <div class="frame"></div>
+    <svg class="wx"><use href="#i-cloud"/></svg>
+    <div class="clock">15:18</div>
+    <div class="wx-line">25°C Ít mây</div>
+    <div class="loc"><svg><use href="#i-pin"/></svg>Ngô Quyền</div>
+  </div>
+
+  <div class="rpm">
+    <div class="shift"><span class="dash"></span>SHIFT UP<span class="dash"></span></div>
+    <div class="rpm-val">4850</div>
+    <div class="rpm-unit">vòng/phút</div>
+  </div>
+
+  <div class="tile t-music">
+    <div class="frame"></div>
+    <svg class="note"><use href="#i-note"/></svg>
+    <div class="song">Chill Vibes - Chillhop</div>
+    <div class="song-time">03:12 / 04:25</div>
+    <div class="ctrl"><svg class="prv"><use href="#i-prev"/></svg><span class="sep"></span><span class="playbtn"><svg><use href="#i-play"/></svg></span><span class="sep"></span><svg class="nxt"><use href="#i-next"/></svg></div>
+  </div>
+
+  <div class="tile L1"><div class="frame"></div><svg class="ico"><use href="#i-tyre"/></svg><div class="txt"><div class="lbl">FL</div><div class="val"><b>2,3</b><i>Bar</i></div></div></div>
+  <div class="tile L2"><div class="frame"></div><svg class="ico"><use href="#i-gauge"/></svg><div class="txt"><div class="lbl">ENGINE LOAD</div><div class="val"><b>78</b><i>%</i></div></div></div>
+  <div class="tile L3"><div class="frame"></div><svg class="ico"><use href="#i-thermo"/></svg><div class="txt"><div class="lbl">NHIỆT ĐỘ NƯỚC</div><div class="val"><b>92</b><i>°C</i></div></div></div>
+  <div class="tile L4"><div class="frame"></div><svg class="ico"><use href="#i-battery"/></svg><div class="txt"><div class="lbl">ĐIỆN ÁP ẮC QUY</div><div class="val"><b>14,1</b><i>v</i></div></div></div>
+  <div class="tile L5"><div class="frame"></div><svg class="ico"><use href="#i-tyre"/></svg><div class="txt"><div class="lbl">RL</div><div class="val"><b>2,2</b><i>Bar</i></div></div></div>
+
+  <div class="tile R1"><div class="frame"></div><svg class="ico"><use href="#i-tyre"/></svg><div class="txt"><div class="lbl">FR</div><div class="val"><b>2,3</b><i>Bar</i></div></div></div>
+  <div class="tile R2"><div class="frame"></div><svg class="ico"><use href="#i-gauge"/></svg><div class="txt"><div class="lbl">TỐC ĐỘ</div><div class="val"><b>92</b><i>km/h</i></div></div></div>
+  <div class="tile R3"><div class="frame"></div><svg class="ico"><use href="#i-battery"/></svg><div class="txt"><div class="lbl">NHIỆT ĐỘ KHÍ NẠP</div><div class="val"><b>32</b><i>°C</i></div></div></div>
+  <div class="tile R4"><div class="frame"></div><svg class="ico"><use href="#i-fuel"/></svg><div class="txt"><div class="lbl two">MỨC TIÊU THỤ<br>NHIÊN LIỆU</div><div class="val sm"><b>12,5</b><i>km/l</i></div></div></div>
+  <div class="tile R5"><div class="frame"></div><svg class="ico"><use href="#i-tyre"/></svg><div class="txt"><div class="lbl">RR</div><div class="val"><b>2,2</b><i>Bar</i></div></div></div>
+
+  <div class="gear-box">
+    <div class="gear-num">3</div>
+    <div class="gear-lbl">GEAR &#9656; 3</div>
+  </div>
+
+</div>
+</div>
+<script src="hud.js"></script>
+</body>
+</html>

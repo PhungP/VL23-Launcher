@@ -1,0 +1,52 @@
+/* ===== THEME 2: ORANGE SPORT =====
+   Cam neon #FF8C42 + đen carbon, khung lục giác kéo dài góc nhọn. RPM và số gear TO, màu cam gradient, phát sáng.
+   Không vòng ngắm, không chữ quân sự: đơn giản, sạch, thể thao. */
+
+#hud.theme-orange {
+  --accent: #ff8c42;
+  --ink: #ffffff;
+  --lbl: #f4efe9;
+  --unit: #ffffff;
+  --ico: #ff8c42;
+  --shift: #ff5a3c;
+  --rpm: #ff8c42;
+  --gear: #ff8c42;
+  --panel: rgba(9, 9, 11, .82);
+  background:
+    radial-gradient(ellipse at 50% 60%, rgba(255, 120, 50, .10), transparent 60%),
+    repeating-linear-gradient(45deg, rgba(255, 255, 255, .028) 0 2px, transparent 2px 5px),
+    repeating-linear-gradient(-45deg, rgba(0, 0, 0, .35) 0 2px, transparent 2px 5px),
+    #07080b;
+}
+#hud.theme-orange .deco-orange { display: block; z-index: 0; }
+.or-dial { position: absolute; left: 19%; top: 18.5%; width: 62%; color: #9fb8c8; opacity: .5; }
+
+/* Khung lục giác kéo dài: viền cam, nền đen carbon */
+#hud.theme-orange .tile .frame { filter: drop-shadow(0 0 .3cqw rgba(255, 140, 66, .5)); }
+#hud.theme-orange .tile .frame::before {
+  inset: 0; background: linear-gradient(100deg, #ff8c42, #ffc08f 45%, #ff8c42 60%, #d9632a);
+  clip-path: polygon(9% 0, 91% 0, 100% 50%, 91% 100%, 9% 100%, 0 50%);
+}
+#hud.theme-orange .tile .frame::after {
+  inset: .14cqw;
+  background: linear-gradient(180deg, rgba(255, 140, 66, .10), transparent 28%), var(--panel);
+  clip-path: polygon(9.2% 0, 90.8% 0, 100% 50%, 90.8% 100%, 9.2% 100%, 0 50%);
+}
+#hud.theme-orange .t-time .frame::before, #hud.theme-orange .t-music .frame::before { clip-path: polygon(8% 0, 92% 0, 100% 50%, 92% 100%, 8% 100%, 0 50%); }
+#hud.theme-orange .t-time .frame::after, #hud.theme-orange .t-music .frame::after { clip-path: polygon(8.2% 0, 91.8% 0, 100% 50%, 91.8% 100%, 8.2% 100%, 0 50%); }
+#hud.theme-orange .tile .txt { left: 7cqw; }
+#hud.theme-orange .tile .ico { left: 2.6cqw; }
+
+/* RPM và gear: số TO màu cam gradient, phát sáng */
+#hud.theme-orange .rpm .rpm-val, #hud.theme-orange .gear-num {
+  color: transparent; background: linear-gradient(180deg, #ffd9bd 0%, #ffa466 38%, #ff7a2f 70%, #e5481a 100%);
+  -webkit-background-clip: text; background-clip: text;
+  filter: drop-shadow(0 0 .9cqw rgba(255, 120, 40, .75)) drop-shadow(0 0 2.2cqw rgba(255, 90, 20, .45));
+}
+#hud.theme-orange .rpm .rpm-val { font-size: 8.4cqw; }
+#hud.theme-orange .gear-num { font-size: 14.5cqw; }
+#hud.theme-orange .gear-box { top: 73.5%; }
+#hud.theme-orange .rpm .shift { text-shadow: 0 0 .6cqw rgba(255, 90, 60, .6); }
+#hud.theme-orange .t-music .playbtn { border-radius: 50%; background: #ff8c42; color: #1a0c04; }
+#hud.theme-orange .t-music .playbtn svg { color: #1a0c04; }
+#hud.theme-orange .t-music .sep { background: #ffffff; }

@@ -139,6 +139,11 @@ Launcher Android dành cho màn hình đầu máy trên ô tô (thiết kế cho
 - **Trang 1:** tên bài hát và nghệ sĩ ở khung đang phát chạy chữ khi dài hơn khung.
 - Thêm `.gitignore` chuẩn cho Android (không đưa thư mục build, `.idea`, `local.properties`, khoá ký lên Git).
 
+### 0.26
+- **HUD Dashboard:** trang mới có ba giao diện đổi bằng nút [1] [2] [3] ở góc trên: **1 SU-35 Combat** (cyan neon, khung góc cắt chéo, vòng ngắm giữa xe), **2 Orange Sport** (cam neon, khung lục giác, RPM và số gear cam phát sáng), **3 Cyberpunk Mechanical** (cyan và kim loại, ốc vít, mạch điện, bánh răng, cụm cơ khí chứa số gear). Xe Honda Accord ở giữa, 5 ô trái, 5 ô phải, RPM trên cùng, số gear dưới cùng; ba theme chỉ khác màu và khung. Đổi theme không làm xe hay các ô nhúc nhích.
+- Số liệu thật khi OBD đã nối (vòng tua, tốc độ, tải, nhiệt độ nước và khí nạp, điện áp, tiêu thụ km/l, số gear, áp suất 4 lốp, thời tiết, nhạc đang phát). Chưa nối OBD thì hiện số liệu mẫu cố định (15:18, 4850 vòng/phút, 92 km/h...) kèm dòng "SỐ LIỆU MẪU"; tắt được trong Cài đặt > HUD Dashboard.
+- Mã nguồn: `Hud.kt` (bố cục chung), `HudThemeSu35.kt`, `HudThemeOrange.kt`, `HudThemeCyber.kt` (màu và khung từng theme). Bản xem trước HTML/CSS với ba tệp theme riêng nằm ở `docs/hud-preview/`.
+
 ## Cập nhật
 
 Vào **Cài đặt > Cập nhật ứng dụng**. Ứng dụng so sánh phiên bản đang cài với bản mới nhất trên GitHub Releases, tải file `.apk` đính kèm và gọi trình cài đặt của Android.

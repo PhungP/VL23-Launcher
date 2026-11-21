@@ -73,6 +73,7 @@ import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.Explore
 import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.Navigation
+import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material.icons.filled.MyLocation
@@ -485,6 +486,7 @@ fun LauncherApp(update: (UiPrefs) -> Unit, openSettings: () -> Unit, openDialer:
                 "telemetry" -> TelemetryPage(obd, nav, update)
                 "apps" -> AppsPage(apps, obd, nav)
                 "map" -> MapPage(obd, nav, update)
+                "hud" -> HudPage(obd, media, nav, update)
                 else -> MusicPage(media, grant, nav)
             }
         }
@@ -1332,6 +1334,7 @@ fun BottomBar(nav: Nav, boost: Float?, showBoost: Boolean, modifier: Modifier = 
                     "telemetry" -> Icon(Icons.Filled.Speed, null, tint = c, modifier = Modifier.size(bi.dp))
                     "apps" -> Icon(Icons.Filled.Apps, null, tint = c, modifier = Modifier.size(bi.dp))
                     "map" -> Icon(Icons.Filled.LocationOn, null, tint = c, modifier = Modifier.size(bi.dp))
+                    "hud" -> Icon(Icons.Filled.Dashboard, null, tint = c, modifier = Modifier.size(bi.dp))
                     else -> Icon(Icons.Filled.MusicNote, null, tint = c, modifier = Modifier.size(bi.dp))
                 }
             }

@@ -1,0 +1,123 @@
+/* ===== THEME 3: CYBERPUNK MECHANICAL =====
+   Xanh cyan #00E5FF + xám kim loại. Khung dày kiểu máy móc: ốc vít, mạch điện, bánh răng, viền kim loại 3D.
+   Ô số Gear nằm trong cụm cơ khí có chữ "HỘP SỐ HIỆN HÀNH" ở trên và "MODE: SPORT" ở dưới. */
+
+#hud.theme-cyberpunk {
+  --accent: #00e5ff;
+  --ink: #f2fdff;
+  --lbl: #e6f6fa;
+  --unit: #bfefff;
+  --ico: #29e6ff;
+  --shift: #29e6ff;
+  --rpm: #f2fdff;
+  --gear: #48eeff;
+  --panel: rgba(5, 12, 18, .9);
+  background:
+    radial-gradient(ellipse at 50% 62%, rgba(0, 229, 255, .10), transparent 60%),
+    repeating-linear-gradient(45deg, rgba(255, 255, 255, .03) 0 1px, transparent 1px 4px),
+    linear-gradient(180deg, #0b1016, #05080c 40%, #080c12);
+}
+#hud.theme-cyberpunk .deco-cyber { display: block; }
+.cy-circuit { position: absolute; inset: 0; width: 100%; height: 100%; filter: drop-shadow(0 0 .3cqw rgba(0, 229, 255, .7)); }
+
+/* Viền khung ngoài cùng của cả màn hình: kim loại dày */
+#hud.theme-cyberpunk::after {
+  content: ""; position: absolute; inset: 0; z-index: 3; pointer-events: none;
+  border: .55cqw solid transparent;
+  border-image: linear-gradient(135deg, #7d8793, #2a3037 30%, #131820 55%, #6e7885) 1;
+  box-shadow: inset 0 0 1.6cqw rgba(0, 229, 255, .22);
+}
+
+/* Ô thông số: viền kim loại dày 3 lớp (kim loại, đường cyan, nền tối) và ốc vít */
+#hud.theme-cyberpunk .tile {
+  --ch: 2cqw;
+  --hex: polygon(var(--ch) 0, calc(100% - var(--ch)) 0, 100% 50%, calc(100% - var(--ch)) 100%, var(--ch) 100%, 0 50%);
+  --hexin: polygon(calc(var(--ch) + .3cqw) 0, calc(100% - var(--ch) - .3cqw) 0, 100% 50%, calc(100% - var(--ch) - .3cqw) 100%, calc(var(--ch) + .3cqw) 100%, 0 50%);
+}
+#hud.theme-cyberpunk .t-time, #hud.theme-cyberpunk .t-music {
+  --ch: 2.6cqw;
+  --hex: polygon(var(--ch) 0, calc(100% - var(--ch)) 0, 100% 50%, calc(100% - var(--ch)) 100%, var(--ch) 100%, 0 50%);
+  --hexin: polygon(calc(var(--ch) + .3cqw) 0, calc(100% - var(--ch) - .3cqw) 0, 100% 50%, calc(100% - var(--ch) - .3cqw) 100%, calc(var(--ch) + .3cqw) 100%, 0 50%);
+}
+#hud.theme-cyberpunk .tile::before {
+  content: ""; position: absolute; inset: 0; clip-path: var(--hex);
+  background: linear-gradient(150deg, #aab4c0 0%, #596270 22%, #262c33 48%, #8a95a2 72%, #323941 100%);
+  filter: drop-shadow(0 .3cqw .35cqw rgba(0, 0, 0, .85));
+}
+#hud.theme-cyberpunk .tile .frame::before {
+  inset: .5cqw .6cqw; background: var(--accent); clip-path: var(--hexin);
+  filter: drop-shadow(0 0 .3cqw rgba(0, 229, 255, .8));
+}
+#hud.theme-cyberpunk .tile .frame::after {
+  inset: .62cqw .72cqw; clip-path: var(--hexin);
+  background: linear-gradient(180deg, rgba(0, 229, 255, .12), transparent 30%), var(--panel);
+}
+#hud.theme-cyberpunk .tile::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 3;
+  background:
+    radial-gradient(circle at calc(var(--ch) + .6cqw) .5cqw, #c5ced8 0 .13cqw, #1b2026 .15cqw .25cqw, transparent .27cqw),
+    radial-gradient(circle at calc(100% - var(--ch) - .6cqw) calc(100% - .5cqw), #c5ced8 0 .13cqw, #1b2026 .15cqw .25cqw, transparent .27cqw),
+    linear-gradient(90deg, transparent 20%, rgba(0, 229, 255, .9) 20% 28%, transparent 28%) bottom .5cqw left 0 / 100% .1cqw no-repeat;
+}
+#hud.theme-cyberpunk .tile .txt { left: 7cqw; }
+#hud.theme-cyberpunk .tile .ico { left: 2.6cqw; filter: drop-shadow(0 0 .3cqw rgba(0, 229, 255, .8)); }
+#hud.theme-cyberpunk .tile .val b { text-shadow: 0 0 .5cqw rgba(0, 229, 255, .6); }
+#hud.theme-cyberpunk .t-music .playbtn { clip-path: polygon(25% 0, 75% 0, 100% 50%, 75% 100%, 25% 100%, 0 50%); background: var(--accent); color: #031014; }
+#hud.theme-cyberpunk .t-music .playbtn svg { color: #031014; }
+
+/* Cụm RPM cơ khí trên cùng */
+.cy-rpm-frame {
+  position: absolute; left: 31%; top: 0; width: 38%; height: 23.5%; z-index: 4;
+  clip-path: polygon(0 0, 100% 0, 100% 52%, 92% 100%, 8% 100%, 0 52%);
+  background: linear-gradient(160deg, #aab4c0 0%, #4c5461 22%, #1f242b 50%, #7b8693 78%, #2d343c 100%);
+  filter: drop-shadow(0 .4cqw .5cqw rgba(0, 0, 0, .9));
+}
+.cy-rpm-frame::before {
+  content: ""; position: absolute; inset: .5cqw; clip-path: polygon(0 0, 100% 0, 100% 52%, 92% 100%, 8% 100%, 0 52%);
+  background: var(--accent);
+}
+.cy-rpm-frame::after {
+  content: ""; position: absolute; inset: .62cqw; clip-path: polygon(0 0, 100% 0, 100% 52%, 92% 100%, 8% 100%, 0 52%);
+  background: linear-gradient(180deg, rgba(0, 229, 255, .16), transparent 35%), #060d13;
+}
+.cy-bot { position: absolute; top: 40%; width: 3.6cqw; height: 3.6cqw; color: #9aa6b4; z-index: 2; filter: drop-shadow(0 0 .3cqw rgba(0, 229, 255, .7)); }
+.cy-bot.l { left: 4%; } .cy-bot.r { right: 4%; }
+#hud.theme-cyberpunk .rpm { top: 1.2%; z-index: 6; }
+#hud.theme-cyberpunk .rpm .rpm-val { text-shadow: 0 0 .5cqw #00e5ff, 0 0 1.3cqw rgba(0, 229, 255, .8), 0 0 2.4cqw rgba(255, 140, 60, .5); font-size: 7.2cqw; }
+#hud.theme-cyberpunk .rpm .shift { text-shadow: 0 0 .6cqw rgba(0, 229, 255, .8); }
+#hud.theme-cyberpunk .rpm .shift .dash { background: #ff9d3c; }
+#hud.theme-cyberpunk .rpm .rpm-unit { color: #e6f6fa; }
+
+/* Cụm cơ khí chứa số gear */
+.cy-mech { position: absolute; left: 23.5%; top: 72%; width: 53%; height: 27.5%; z-index: 7; }
+.cy-mech .piston {
+  position: absolute; top: 26%; width: 34%; height: 48%;
+  background:
+    repeating-linear-gradient(90deg, transparent 0 14%, rgba(0, 229, 255, .8) 14% 15.2%, transparent 15.2% 28%) center / 100% 8% no-repeat,
+    linear-gradient(180deg, #8a95a2 0%, #3b434c 28%, #1c2127 50%, #6c7783 78%, #2b323a 100%);
+  filter: drop-shadow(0 .3cqw .4cqw rgba(0, 0, 0, .85));
+}
+.cy-mech .piston.l { left: 0; clip-path: polygon(0 10%, 70% 0, 100% 18%, 100% 82%, 70% 100%, 0 90%); }
+.cy-mech .piston.r { right: 0; clip-path: polygon(100% 10%, 30% 0, 0 18%, 0 82%, 30% 100%, 100% 90%); }
+.cy-mech .gear { position: absolute; color: #7d8793; filter: drop-shadow(0 .2cqw .3cqw rgba(0, 0, 0, .9)) drop-shadow(0 0 .25cqw rgba(0, 229, 255, .55)); }
+.cy-mech .g1 { left: 66%; top: 6%; width: 7.4cqw; height: 7.4cqw; }
+.cy-mech .g2 { left: 27%; top: 62%; width: 4cqw; height: 4cqw; }
+.cy-mech .g3 { left: 29%; top: 2%; width: 2.8cqw; height: 2.8cqw; }
+.cy-core {
+  position: absolute; left: 30%; top: 3%; width: 40%; height: 94%;
+  background: linear-gradient(150deg, #aab4c0, #4a525e 25%, #1e242b 52%, #818c99 78%, #2c333b);
+  clip-path: polygon(9% 0, 91% 0, 100% 50%, 91% 100%, 9% 100%, 0 50%);
+  filter: drop-shadow(0 .3cqw .4cqw rgba(0, 0, 0, .9));
+}
+.cy-core::before { content: ""; position: absolute; inset: .55cqw; background: var(--accent); clip-path: polygon(9.4% 0, 90.6% 0, 100% 50%, 90.6% 100%, 9.4% 100%, 0 50%); }
+.cy-core::after { content: ""; position: absolute; inset: .68cqw; background: radial-gradient(ellipse at 50% 55%, rgba(0, 229, 255, .22), transparent 70%), #050c12; clip-path: polygon(9.6% 0, 90.4% 0, 100% 50%, 90.4% 100%, 9.6% 100%, 0 50%); }
+.cy-gear-title { position: absolute; left: 50%; top: 8%; transform: translateX(-50%); font-size: 1.2cqw; font-weight: 700; letter-spacing: .05em; color: #4af0ff; white-space: nowrap; text-shadow: 0 0 .5cqw rgba(0, 229, 255, .8); z-index: 3; }
+.cy-gear-mode { position: absolute; left: 50%; bottom: 7%; transform: translateX(-50%); font-size: 1.05cqw; font-weight: 700; letter-spacing: .05em; color: #ff9d3c; white-space: nowrap; z-index: 3; }
+#hud.theme-cyberpunk .gear-box { top: 77.2%; width: 16%; }
+#hud.theme-cyberpunk .gear-num { font-size: 10.6cqw; text-shadow: 0 0 .7cqw #00e5ff, 0 0 1.8cqw rgba(0, 229, 255, .75); }
+
+#hud.theme-cyberpunk .tile .lbl { font-size: 1.02cqw; }
+#hud.theme-cyberpunk .tile .lbl.two { font-size: 1cqw; }
+#hud.theme-cyberpunk .tile .txt { left: 6.9cqw; right: 1.4cqw; }
+#hud.theme-cyberpunk .tile .val b { font-size: 3.3cqw; }
+#hud.theme-cyberpunk .tile .val.sm b { font-size: 2.9cqw; }

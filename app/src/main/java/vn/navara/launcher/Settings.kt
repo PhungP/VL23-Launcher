@@ -530,6 +530,15 @@ fun SettingsScreen(
                     if (p.geminiPos.isNotEmpty()) line("Đưa nút AI về vị trí mặc định") { Btn("Đặt lại") { onChange(p.copy(geminiPos = "")) } }
                 }
 
+                Group("HUD Dashboard") {
+                    choice(
+                        "Giao diện HUD", listOf("1 SU-35 Combat", "2 Orange Sport", "3 Cyberpunk"), p.hudTheme.coerceIn(1, 3) - 1,
+                        "Cũng đổi được ngay trên trang HUD bằng ba nút [1] [2] [3] ở góc trên. Ba giao diện chỉ khác màu và khung; xe, vị trí các ô và số liệu giữ nguyên."
+                    ) { onChange(p.copy(hudTheme = it + 1)) }
+                    tg("Hiện số liệu mẫu khi chưa nối OBD", p.hudSample) { onChange(p.copy(hudSample = it)) }
+                    note("Trang HUD Dashboard nằm trong danh sách trang (đổi chỗ ở mục Thứ tự các trang). Khi OBD đã nối, HUD hiện số liệu thật: vòng tua, tốc độ, tải động cơ, nhiệt độ nước, nhiệt độ khí nạp, điện áp, mức tiêu thụ, số gear, áp suất 4 lốp (nếu bật TPMS), thời tiết và nhạc đang phát.")
+                }
+
                 Group("TPMS: áp suất lốp (cảm biến mua ngoài)") {
                     tg("Đọc cảm biến TPMS qua Bluetooth", p.tpmsOn) { onChange(p.copy(tpmsOn = it)) }
                     if (p.tpmsOn) {

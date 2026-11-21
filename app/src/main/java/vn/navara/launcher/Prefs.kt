@@ -14,15 +14,16 @@ import androidx.compose.ui.text.font.FontWeight
 import java.io.File
 
 // Các trang của launcher (id) và thứ tự mặc định
-val PAGE_IDS = listOf("home", "map", "music", "telemetry", "apps")
+val PAGE_IDS = listOf("home", "map", "music", "telemetry", "apps", "hud")
 
-// Chuỗi thứ tự đã lưu -> danh sách đủ 5 trang, mỗi trang đúng một lần (thiếu thì bổ sung cuối, lạ thì bỏ)
+// Chuỗi thứ tự đã lưu -> danh sách đủ các trang, mỗi trang đúng một lần (thiếu thì bổ sung cuối, lạ thì bỏ)
 fun parsePageOrder(s: String): List<String> {
     val got = s.split(",").map { it.trim() }.filter { it in PAGE_IDS }.distinct()
     return got + PAGE_IDS.filter { it !in got }
 }
 
 fun pageName(id: String): String = when (id) {
+    "hud" -> "HUD Dashboard"
     "home" -> "Trang chủ (OBD)"
     "telemetry" -> "Thông số OBD (xe đua)"
     "apps" -> "Ứng dụng"
@@ -77,6 +78,8 @@ data class UiPrefs(
     val iconBlue: Boolean = false,      // biểu tượng ứng dụng: xanh kết hợp trắng theo tông đồng hồ xe
     val navVoice: Boolean = true,       // đọc chỉ dẫn dẫn đường bằng giọng nói
     val homeLayout: Int = 0,            // bố cục trang 1 (bộ Đồng hồ xe): 0 bố cục mới (ảnh xe + 6 ô), 1 thể thao (đồng hồ vòng tua dạng cung)
+    val hudTheme: Int = 1,              // giao diện HUD Dashboard: 1 SU-35 Combat, 2 Orange Sport, 3 Cyberpunk Mechanical
+    val hudSample: Boolean = true,      // chưa nối OBD thì HUD hiện số liệu mẫu để xem giao diện (tắt thì hiện "--")
     val aiProvider: Int = 0,            // dịch vụ AI chính: 0 Gemini, 1 Groq, 2 OpenRouter, 3 Mistral, 4 Cerebras, 5 tùy chỉnh (OpenAI tương thích)
     val aiCfg: String = "",             // khoá, mô hình, địa chỉ của các dịch vụ 1..5 dạng JSON (Gemini dùng geminiKey / geminiModel)
     val aiFallback: Boolean = true,     // tự chuyển sang dịch vụ AI khác đã nhập khoá khi hết hạn mức, quá tải hoặc quá chậm
@@ -140,6 +143,8 @@ fun loadPrefs(c: Context): UiPrefs {
         mapTilt = s.getBoolean("mapTilt", d.mapTilt),
         homeLayout = s.getInt("homeLayout", d.homeLayout).coerceIn(0, 1),
         homeCount = s.getInt("homeCount", d.homeCount).coerceIn(2, 10),
+        hudTheme = s.getInt("hudTheme", d.hudTheme).coerceIn(1, 3),
+        hudSample = s.getBoolean("hudSample", d.hudSample),
         aiProvider = s.getInt("aiProvider", d.aiProvider).coerceIn(0, 5),
         aiCfg = s.getString("aiCfg", d.aiCfg) ?: d.aiCfg,
         aiFallback = s.getBoolean("aiFallback", d.aiFallback),
@@ -196,7 +201,7 @@ fun savePrefs(c: Context, p: UiPrefs) {
         .putInt("mapEngine", p.mapEngine).putString("mapTilerKey", p.mapTilerKey).putInt("gearTrim", p.gearTrim)
         .putInt("skin", p.skin).putInt("mapTheme", p.mapTheme).putBoolean("mapTilt", p.mapTilt).putInt("homeLayout", p.homeLayout).putBoolean("navVoice", p.navVoice).putBoolean("iconBlue", p.iconBlue).putString("vehicle", p.vehicle).putInt("carPhoto", p.carPhoto).putInt("homeText", p.homeText).putInt("homeLine", p.homeLine).putInt("homeGear", p.homeGear).putString("goongMapKey", p.goongMapKey).putString("goongApiKey", p.goongApiKey).putBoolean("goongRoute", p.goongRoute).putInt("glass", p.glass).putInt("frameShape", p.frameShape).putString("homeOffsets", p.homeOffsets)
         .putInt("carImg", p.carImg).putInt("carVer", p.carVer).putInt("gearMode", p.gearStyle).putString("homeTiles", p.homeTiles)
-        .putInt("homeCount", p.homeCount).putInt("aiProvider", p.aiProvider).putString("aiCfg", p.aiCfg).putBoolean("aiFallback", p.aiFallback).putString("geminiKey", p.geminiKey).putString("geminiModel", p.geminiModel).putBoolean("geminiSpeak", p.geminiSpeak).putString("geminiPos", p.geminiPos).putInt("tileBorder", p.tileBorder).putInt("obdStyle", p.obdStyle).putInt("obdCols", p.obdCols).putInt("homeThick", p.homeThick).putInt("homeStyle", p.homeStyle)
+        .putInt("homeCount", p.homeCount).putInt("hudTheme", p.hudTheme).putBoolean("hudSample", p.hudSample).putInt("aiProvider", p.aiProvider).putString("aiCfg", p.aiCfg).putBoolean("aiFallback", p.aiFallback).putString("geminiKey", p.geminiKey).putString("geminiModel", p.geminiModel).putBoolean("geminiSpeak", p.geminiSpeak).putString("geminiPos", p.geminiPos).putInt("tileBorder", p.tileBorder).putInt("obdStyle", p.obdStyle).putInt("obdCols", p.obdCols).putInt("homeThick", p.homeThick).putInt("homeStyle", p.homeStyle)
         .putString("homeStyles", p.homeStyles).putString("homeSizes", p.homeSizes).putInt("screenMode", p.screenMode)
         .putBoolean("tpmsOn", p.tpmsOn).putInt("tpmsUnit", p.tpmsUnit).putString("tpmsMap", p.tpmsMap)
         .putBoolean("tpmsAbs", p.tpmsAbs).putInt("tpmsTrim", p.tpmsTrim).putInt("tpmsLow", p.tpmsLow).putInt("tpmsHigh", p.tpmsHigh).apply()

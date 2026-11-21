@@ -1,0 +1,78 @@
+/* ===== THEME 1: SU-35 COMBAT =====
+   Xanh cyan neon #00F0FF trên nền đen, khung viền mỏng góc cắt chéo kiểu quân sự.
+   Chỉ khác theme khác ở MÀU và KHUNG; vị trí, cỡ chữ, số liệu nằm trong hud-base.css. */
+
+#hud.theme-su35 {
+  --accent: #00f0ff;
+  --ink: #7dfff0;
+  --lbl: #d3feff;
+  --unit: #7dfff0;
+  --ico: #00f0ff;
+  --shift: #00f0ff;
+  --rpm: #7dffe9;
+  --gear: #36ecff;
+  --panel: rgba(0, 12, 18, .78);
+  background:
+    radial-gradient(ellipse at 50% 58%, rgba(0, 240, 255, .10), transparent 58%),
+    repeating-linear-gradient(0deg, rgba(0, 240, 255, .035) 0 1px, transparent 1px 4.5cqw),
+    repeating-linear-gradient(90deg, rgba(0, 240, 255, .035) 0 1px, transparent 1px 4.5cqw),
+    #03070b;
+}
+
+/* Khung chiến đấu: bốn góc ngoặc vuông quanh toàn màn hình */
+#hud.theme-su35::after {
+  content: ""; position: absolute; inset: .7cqw; z-index: 3; pointer-events: none;
+  --k: 3.2cqw; --w: .18cqw; --col: #00f0ff;
+  background:
+    linear-gradient(var(--col), var(--col)) top left / var(--k) var(--w) no-repeat,
+    linear-gradient(var(--col), var(--col)) top left / var(--w) var(--k) no-repeat,
+    linear-gradient(var(--col), var(--col)) top right / var(--k) var(--w) no-repeat,
+    linear-gradient(var(--col), var(--col)) top right / var(--w) var(--k) no-repeat,
+    linear-gradient(var(--col), var(--col)) bottom left / var(--k) var(--w) no-repeat,
+    linear-gradient(var(--col), var(--col)) bottom left / var(--w) var(--k) no-repeat,
+    linear-gradient(var(--col), var(--col)) bottom right / var(--k) var(--w) no-repeat,
+    linear-gradient(var(--col), var(--col)) bottom right / var(--w) var(--k) no-repeat;
+  filter: drop-shadow(0 0 .4cqw rgba(0, 240, 255, .7));
+}
+
+#hud.theme-su35 .deco-su35 { display: block; }
+
+/* Khung ô: viền mỏng 1,5 px, hai góc cắt chéo */
+#hud.theme-su35 .tile .frame { filter: drop-shadow(0 0 .35cqw rgba(0, 240, 255, .55)); }
+#hud.theme-su35 .tile .frame::before {
+  inset: 0; background: var(--accent);
+  clip-path: polygon(var(--c) 0, 100% 0, 100% calc(100% - var(--c)), calc(100% - var(--c)) 100%, 0 100%, 0 var(--c));
+}
+#hud.theme-su35 .tile .frame::after {
+  inset: .12cqw; background: var(--panel);
+  clip-path: polygon(calc(var(--c) - .08cqw) 0, 100% 0, 100% calc(100% - var(--c) + .08cqw), calc(100% - var(--c)) 100%, 0 100%, 0 calc(var(--c) - .08cqw));
+}
+#hud.theme-su35 .tile .val b { text-shadow: 0 0 .5cqw rgba(0, 240, 255, .45); }
+
+/* Chữ trang trí quân sự */
+.su-title {
+  position: absolute; left: 50%; top: .5%; transform: translateX(-50%); white-space: nowrap;
+  font-size: 1.72cqw; font-weight: 700; letter-spacing: .05em; color: #6ffcff; text-shadow: 0 0 .5cqw rgba(0, 240, 255, .6);
+}
+.su-combat {
+  position: absolute; left: 71.4%; top: 1%; white-space: nowrap;
+  font-size: 1.22cqw; font-weight: 700; color: #ff9d3c; display: flex; align-items: center; gap: .6cqw;
+}
+.su-combat .warn { font-size: 1.6cqw; }
+.su-reticle { position: absolute; left: 50%; top: 55.5%; width: 27cqw; height: 27cqw; transform: translate(-50%, -50%); color: #00f0ff; opacity: .78; filter: drop-shadow(0 0 .3cqw #00f0ff); }
+.su-lock { position: absolute; left: 62.2%; top: 33.6%; font-size: 1.2cqw; font-weight: 700; color: #ffb347; letter-spacing: .04em; white-space: nowrap; }
+
+/* Vòng cung và thang màu RPM dưới số */
+.su-arc { position: absolute; left: 36.8%; top: 7.6%; width: 26.4%; opacity: .95; filter: drop-shadow(0 0 .3cqw rgba(0, 240, 255, .6)); }
+.su-scale { position: absolute; left: 35.5%; top: 27.4%; width: 29%; }
+.su-scale .bar { position: relative; height: .95cqw; border-radius: .3cqw; background: linear-gradient(90deg, #00d9ff, #38f0b0 45%, #e8d34a 72%, #ff7a2a); box-shadow: 0 0 .6cqw rgba(0, 240, 255, .5); }
+.su-scale .bar i { position: absolute; top: -.5cqw; width: .22cqw; height: 1.95cqw; background: #fff; box-shadow: 0 0 .5cqw #fff; transform: translateX(-50%); }
+.su-scale .nums { display: flex; justify-content: space-between; margin-top: .5cqw; font-size: 1.2cqw; font-weight: 700; color: #bff9ff; }
+
+/* Dưới cùng: số gear + dòng "GEAR > 3" */
+#hud.theme-su35 .gear-num { text-shadow: 0 0 1.3cqw rgba(0, 240, 255, .75); }
+#hud.theme-su35 .gear-lbl { display: block; margin-top: -.6cqw; font-size: 1.75cqw; font-weight: 700; letter-spacing: .06em; color: #6ffcff; }
+#hud.theme-su35 .rpm .rpm-val { text-shadow: 0 0 1.1cqw rgba(0, 240, 255, .7); }
+#hud.theme-su35 .rpm .shift { text-shadow: 0 0 .6cqw rgba(0, 240, 255, .7); }
+#hud.theme-su35 .gear-box { top: 73.5%; }
+#hud.theme-su35 .gear-num { font-size: 11.2cqw; }
