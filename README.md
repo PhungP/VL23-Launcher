@@ -144,6 +144,18 @@ Launcher Android dành cho màn hình đầu máy trên ô tô (thiết kế cho
 - Số liệu thật khi OBD đã nối (vòng tua, tốc độ, tải, nhiệt độ nước và khí nạp, điện áp, tiêu thụ km/l, số gear, áp suất 4 lốp, thời tiết, nhạc đang phát). Chưa nối OBD thì hiện số liệu mẫu cố định (15:18, 4850 vòng/phút, 92 km/h...) kèm dòng "SỐ LIỆU MẪU"; tắt được trong Cài đặt > HUD Dashboard.
 - Mã nguồn: `Hud.kt` (bố cục chung), `HudThemeSu35.kt`, `HudThemeOrange.kt`, `HudThemeCyber.kt` (màu và khung từng theme). Bản xem trước HTML/CSS với ba tệp theme riêng nằm ở `docs/hud-preview/`.
 
+### 0.27
+- **Ba bộ giao diện HUD** (Cài đặt > Giao diện > Bộ giao diện: SU-35, Orange, Cyber): biến ba màn hình HUD thành ba bộ giao diện cùng phong cách và màu sắc cho mọi trang (nền, khung, màu chọn, thanh dưới). **Trang 1 là màn hình HUD** với số liệu OBD thật, không còn số liệu mẫu (chưa nối OBD thì hiện "--"); vẫn đổi hình xe ở mục Hình xe (thêm ảnh "Drift (HUD)" cho hồ sơ Honda Accord). Ba nút [1] [2] [3] trên trang 1 chuyển nhanh giữa ba bộ HUD. Trang "HUD Dashboard" riêng không còn.
+- **AI:** bỏ Mistral và Cerebras; thêm **Cloudflare Workers AI** (cần Account ID và API token, mặc định `@cf/openai/gpt-oss-120b`) và **NVIDIA** (khoá nvapi-, mặc định `meta/llama-3.3-70b-instruct`). Cài đặt đã chọn Mistral hoặc Cerebras tự chuyển về Gemini.
+- **OpenRouter:** mô hình miễn phí đổi liên tục nên mặc định dùng bộ định tuyến `openrouter/free`; nếu mô hình đã chọn bị ngừng, app tự hỏi OpenRouter, chọn một mô hình miễn phí đang chạy (giá 0, ngữ cảnh từ 32 nghìn token, ưu tiên mô hình lớn) rồi lưu lại.
+- **Trang 1:** thêm biểu tượng chỉ đường hai tông xanh, quay theo hướng xe, bên trái thông tin hướng đi (bố cục mới, bố cục thể thao và các bộ HUD).
+
+### 0.28
+- **Bỏ giao diện Robot và SciFi.** Còn bốn bộ giao diện: Đồng hồ, HUD SU-35, HUD Orange, HUD Cyber. Máy đang dùng Robot hoặc SciFi tự về Đồng hồ.
+- **Trang 1 của ba bộ HUD gọn hơn:** bỏ thanh dock và thanh điều hướng, màn hình HUD toàn màn hình (vuốt ngang để sang trang khác). Tắt bớt được từng ô (giờ và thời tiết, nhạc, tốc độ, tải, nhiệt độ nước, nhiệt độ khí nạp, điện áp, tiêu thụ, áp suất lốp) ở Cài đặt > Hiển thị > HUD; các ô còn lại tự dàn đều và to hơn. Bốn ô áp suất lốp chỉ hiện khi bật TPMS. Ba nút [1] [2] [3] chuyển nhanh bộ HUD giờ là tuỳ chọn (tắt mặc định). Dòng hướng đi với mũi tên chỉ đường nằm dưới cùng cột trái.
+- **Trang Cài đặt chia theo chủ đề:** mở vào là danh sách (Giao diện, Hiển thị, Xe và OBD, Bản đồ, Trợ lý AI, Hệ thống, Về ứng dụng); bấm một mục mới hiện phần cài đặt tương ứng, phím Back hoặc nút "‹ Cài đặt" quay về danh sách.
+- **Nút AI nổi:** thêm công tắc bật tắt và chọn các trang hiển thị nút (Cài đặt > Trợ lý AI > Nút AI nổi); mặc định chỉ hiện ở trang 1. Trên trang 1 của bộ HUD nút nằm sát đáy vì không có dock.
+
 ## Cập nhật
 
 Vào **Cài đặt > Cập nhật ứng dụng**. Ứng dụng so sánh phiên bản đang cài với bản mới nhất trên GitHub Releases, tải file `.apk` đính kèm và gọi trình cài đặt của Android.

@@ -3,6 +3,8 @@ package vn.navara.launcher
 import android.graphics.Paint
 import android.graphics.Typeface
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.Path
@@ -72,6 +74,22 @@ fun headingLabel(deg: Float?): String {
     if (deg == null) return "--"
     val d = ((deg % 360f) + 360f) % 360f
     return arrayOf("Bắc", "Đông Bắc", "Đông", "Đông Nam", "Nam", "Tây Nam", "Tây", "Tây Bắc")[((d + 22.5f) / 45f).toInt() % 8]
+}
+
+// Biểu tượng chỉ đường hai tông xanh (nửa trái xanh nhạt, nửa phải xanh đậm), quay theo hướng xe đang đi; chưa có hướng thì chỉ lên trên.
+// Hình vẽ theo khung 512 x 512 của ảnh gốc: mũi nhọn trên cùng, hai cánh bo tròn, khuyết hình chữ V phía dưới.
+@Composable
+fun NavArrow(heading: Float?, size: Dp, light: Color = Color(0xFF80BBFF), dark: Color = Color(0xFF007FFF)) {
+    val ang by animateFloatAsState(heading ?: 0f, tween(300), label = "navarrow")
+    Canvas(Modifier.size(size)) {
+        val k = this.size.minDimension / 512f
+        rotate(ang, center) {
+            val left = Path().apply { moveTo(254f * k, 4f * k); lineTo(46f * k, 500f * k); lineTo(254f * k, 385f * k); close() }
+            val right = Path().apply { moveTo(258f * k, 4f * k); lineTo(466f * k, 500f * k); lineTo(258f * k, 385f * k); close() }
+            drawPath(left, light)
+            drawPath(right, dark)
+        }
+    }
 }
 
 // Biểu tượng la bàn nhỏ: vòng tròn có chấm Bắc cố định phía trên, mũi tên quay theo hướng xe đang đi
@@ -160,6 +178,8 @@ fun SportGauge(rpm: Float, gear: Int?, ok: Boolean, heading: Float?, modifier: M
             }
         }
         Row(Modifier.align(Alignment.TopCenter).height(hh), verticalAlignment = Alignment.CenterVertically) {
+            NavArrow(heading, 26.dp)
+            Spacer(Modifier.width(8.dp))
             Text(headingLabel(heading), color = t.ink, fontSize = 20.sp, fontWeight = FontWeight.Bold, maxLines = 1)
             if (heading != null) {
                 val d = (((heading % 360f) + 360f) % 360f).toInt()

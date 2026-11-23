@@ -115,12 +115,12 @@ fun Modifier.panel(cut: Dp = 14.dp, left: Boolean = true, right: Boolean = true,
     var m = this.clip(shape)
         .background(if (t.mono == 0) Brush.verticalGradient(t.fillG) else SolidColor(t.panelG))
     // Độ dày viền: border < 0 là mặc định của bộ giao diện; border = 0 là không viền
-    val bw = if (border >= 0f) border else if (t.kind == 4) 1.5f else 2f
+    val bw = if (border >= 0f) border else if (t.glowLike) 1.5f else 2f
     if (bw > 0f) {
-        if (t.kind == 4) m = m.border((bw + 3.5f).dp, c.copy(alpha = 0.18f), shape)   // SciFi: quầng sáng neon quanh khung
+        if (t.glowLike) m = m.border((bw + 3.5f).dp, c.copy(alpha = 0.18f), shape)   // SU-35 và Orange: quầng sáng neon quanh khung
         m = m.border(bw.dp, c, shape)
     }
-    if (t.kind == 3) {   // Robot: hai đinh tán ở giữa hai cạnh bên
+    if (t.robotLike) {   // HUD Cyberpunk: hai đinh tán ở giữa hai cạnh bên
         m = m.drawBehind {
             val col = Color(0xFF9AA4B2)
             val o = 6.dp.toPx()
@@ -177,6 +177,8 @@ fun HomeCluster(obd: ObdData, media: MediaInfo, onGrant: () -> Unit, nav: Nav) {
                     }
                     Spacer(Modifier.weight(1f))
                     Row(verticalAlignment = Alignment.CenterVertically) {
+                        NavArrow(heading, 34.dp)
+                        Spacer(Modifier.width(8.dp))
                         Column {
                             Text(headingLabel(heading), color = t.hInk, fontSize = 20.sp, lineHeight = 22.sp, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
                             if (heading != null) {

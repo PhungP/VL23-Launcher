@@ -79,10 +79,13 @@ private fun parseGeminiPos(s: String): Offset {
 }
 
 @Composable
-fun GeminiOverlay(obd: ObdData, nav: Nav, update: (UiPrefs) -> Unit) {
+fun GeminiOverlay(obd: ObdData, nav: Nav, update: (UiPrefs) -> Unit, pageId: String) {
     val t = LocalTheme.current
     val p = t.p
-    if (!aiAny(p)) return
+    // Chỉ hiện khi đã có khoá API, đang bật nút AI và trang hiện tại nằm trong danh sách trang được chọn (mặc định chỉ trang 1)
+    if (!aiAny(p) || !p.aiFab || pageId !in p.aiFabPages.split(",")) return
+    // Trang 1 của bộ HUD không có thanh dock nên nút nằm sát đáy; các trang khác nâng nút lên trên thanh dock
+    val noDock = pageId == "home" && t.isHud
     var open by remember { mutableStateOf(false) }
     val curP by rememberUpdatedState(p)
     val dens = LocalDensity.current.density
@@ -90,10 +93,11 @@ fun GeminiOverlay(obd: ObdData, nav: Nav, update: (UiPrefs) -> Unit) {
     BoxWithConstraints(Modifier.fillMaxSize()) {
         if (!open) {
             // Mặc định ở góc dưới trái, trên thanh dưới; kéo tới chỗ nào cũng được và nhớ vị trí
-            val maxX = maxWidth.value - 54f
-            val maxY = maxHeight.value - 124f
+            val startDp = if (noDock) maxWidth.value * 0.225f else 8f
+            val maxX = maxWidth.value - 54f - startDp + 8f
+            val maxY = maxHeight.value - (if (noDock) 54f else 124f)
             Box(
-                Modifier.align(Alignment.BottomStart).padding(start = 8.dp, bottom = 78.dp)
+                Modifier.align(Alignment.BottomStart).padding(start = startDp.dp, bottom = if (noDock) 8.dp else 78.dp)
                     .offset { IntOffset((pos.x * dens).roundToInt(), (pos.y * dens).roundToInt()) }
                     .size(46.dp).clip(CircleShape).background(t.accent).border(2.dp, t.onAccent.copy(alpha = 0.6f), CircleShape)
                     .pointerInput(Unit) { detectTapGestures(onTap = { open = true }) }
@@ -103,7 +107,7 @@ fun GeminiOverlay(obd: ObdData, nav: Nav, update: (UiPrefs) -> Unit) {
                         ) { change, amount ->
                             change.consume()
                             pos = Offset(
-                                (pos.x + amount.x / dens).coerceIn(-8f, maxX),
+                                (pos.x + amount.x / dens).coerceIn(-startDp, maxX),
                                 (pos.y + amount.y / dens).coerceIn(-maxY, 70f)
                             )
                         }
@@ -166,9 +170,9 @@ private fun GeminiPanel(obd: ObdData, nav: Nav, update: (UiPrefs) -> Unit, onClo
             val r = Ai.ask(curP, system, user, audio, json, withText)
             busy = false
             val txt = r.text
-            // Mô hình Gemini đã cấu hình bị Google ngừng: app đã tự chọn mô hình mới, lưu lại cho lần sau
-            val used = r.geminiModel
-            if (used != null && used != curP.geminiModel) update(curP.copy(geminiModel = used))
+            // Mô hình đã cấu hình bị ngừng (Gemini, OpenRouter): app đã tự chọn mô hình mới, lưu lại cho lần sau
+            val used = r.newModel
+            if (used != null && r.provider >= 0 && used != aiModelRaw(curP, r.provider)) update(curP.withAi(r.provider, model = used))
             note = r.note.orEmpty()
             if (txt == null) { answer = r.error ?: "Lỗi không rõ"; isError = true } else onText(txt)
         }

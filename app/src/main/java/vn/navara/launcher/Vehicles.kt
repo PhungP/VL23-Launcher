@@ -25,7 +25,7 @@ class VehicleProfile(
     val ratiosVerified: Boolean,         // false = tỉ số hộp số là ước tính, cần kiểm tra
     val sedan: Boolean,                  // true = hình xe vector dạng sedan, false = bán tải
     val photos: List<CarPhoto>,          // các ảnh xe để chọn ở trang 1; rỗng = dùng hình vector
-    val skin: Int,                       // bộ giao diện: 0 Đồng hồ (cam + xanh), 3 Robot, 4 SciFi
+    val skin: Int,                       // bộ giao diện: 0 Đồng hồ (cam + xanh), 5 HUD SU-35, 6 HUD Orange, 7 HUD Cyberpunk
     val homeTiles: String,               // 6 thông số mặc định ở trang 1
     val homeHide: Set<String>,           // thông số không phù hợp, ẩn khỏi danh sách chọn ở trang 1
     val obdHide: Set<String>,            // thông số ẩn ở trang OBD
@@ -73,8 +73,9 @@ object Vehicles {
             CarPhoto(R.drawable.accord_desert, "Sa mạc", true),
             CarPhoto(R.drawable.accord_mud, "Núi bùn", true),
             CarPhoto(R.drawable.accord_photo, "Studio", false),
+            CarPhoto(R.drawable.hud_car, "Drift (HUD)", false),
         ),
-        skin = 4, homeTiles = "rpm,load,coolant,map,iat,volt",
+        skin = 5, homeTiles = "rpm,load,coolant,map,iat,volt",
         homeHide = setOf("boost", "egt", "rail"),
         obdHide = setOf("boost", "egt", "rail", "torque", "torqueNm", "power", "injTiming", "fuelPress"),
         obdAdd = setOf("stft", "ltft", "catTemp", "lambda", "throttle"),
@@ -100,7 +101,7 @@ object Vehicles {
         engine = "Động cơ diesel, đọc theo PID chuẩn", fuel = Fuel.DIESEL, turbo = 1,
         gearbox = "Không ước lượng cấp số",
         gearRatios = doubleArrayOf(), finalDrive = 0.0, tireM = 2.3, ratiosVerified = true, sedan = false, photos = emptyList(),
-        skin = 3, homeTiles = "rpm,load,coolant,boost,iat,volt",
+        skin = 0, homeTiles = "rpm,load,coolant,boost,iat,volt",
         homeHide = setOf("stft", "ltft", "catTemp"),
         obdHide = setOf("stft", "ltft", "catTemp", "lambda"),
         obdAdd = emptySet(),

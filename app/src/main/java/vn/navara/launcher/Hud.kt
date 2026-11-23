@@ -76,18 +76,12 @@ import java.util.Locale
 //   HudThemeSu35.kt, HudThemeOrange.kt, HudThemeCyber.kt  (tương ứng theme-su35.css, theme-orange.css, theme-cyberpunk.css của bản xem trước)
 // Vị trí các ô là tỉ lệ so với vùng trang, nên co giãn vừa 800×480 và 1280×720.
 
-// Mọi thứ hiển thị trên màn hình. sample = true là số liệu mẫu cố định để xem giao diện khi chưa nối OBD.
+// Mọi thứ hiển thị trên màn hình: số liệu thật từ OBD, TPMS, thời tiết, nhạc đang phát; chưa có thì hiện "--".
 class HudData(
     val time: String, val temp: String, val weather: String, val place: String, val sunny: Boolean,
     val song: String, val songTime: String, val playing: Boolean,
     val rpm: String, val shiftUp: Boolean, val speed: String, val load: String, val coolant: String, val intake: String,
-    val volt: String, val fuel: String, val tpms: List<String>, val tpmsUnit: String, val gear: String, val sample: Boolean
-)
-
-val HUD_SAMPLE = HudData(
-    "15:18", "25°C", "Ít mây", "Ngô Quyền", false,
-    "Chill Vibes - Chillhop", "03:12 / 04:25", true,
-    "4850", true, "92", "78", "92", "32", "14,1", "12,5", listOf("2,3", "2,3", "2,2", "2,2"), "Bar", "3", true
+    val volt: String, val fuel: String, val tpms: List<String>, val tpmsUnit: String, val gear: String
 )
 
 // Một giao diện HUD. drawFrame vẽ khung của ô (w, h là kích thước ô tính bằng pixel).
@@ -111,12 +105,13 @@ interface HudTheme {
     @Composable fun Front(d: HudData, W: Dp, H: Dp)    // trang trí nằm trên xe (vòng ngắm, cụm cơ khí...)
 }
 
-fun hudTheme(i: Int): HudTheme = when (i) { 2 -> HudThemeOrange; 3 -> HudThemeCyber; else -> HudThemeSu35 }
+// Bộ giao diện (kind): 5 SU-35 Combat, 6 Orange Sport, 7 Cyberpunk Mechanical
+fun hudTheme(kind: Int): HudTheme = when (kind) { 6 -> HudThemeOrange; 7 -> HudThemeCyber; else -> HudThemeSu35 }
 
 private fun fmt(v: Float?, dec: Int): String = if (v == null) "--" else String.format(Locale.US, "%." + dec + "f", v).replace('.', ',')
 private fun mmss(ms: Long): String { val s = (ms / 1000).coerceAtLeast(0); return String.format(Locale.US, "%02d:%02d", s / 60, s % 60) }
 
-// Số liệu thật khi OBD đã nối; chưa nối thì (nếu bật trong Cài đặt) dùng số liệu mẫu để xem giao diện
+// Số liệu thật; chưa nối OBD thì các ô OBD hiện "--"
 @Composable
 fun rememberHudData(obd: ObdData, media: MediaInfo, p: UiPrefs): HudData {
     val tp by TpmsManager.wheels.collectAsState()
@@ -124,7 +119,6 @@ fun rememberHudData(obd: ObdData, media: MediaInfo, p: UiPrefs): HudData {
     var now by remember { mutableStateOf(System.currentTimeMillis()) }
     LaunchedEffect(Unit) { while (true) { now = System.currentTimeMillis(); delay(5000) } }
     val ok = obd.status == ObdManager.OK
-    if (!ok && p.hudSample) return HUD_SAMPLE
     val time = java.text.SimpleDateFormat("HH:mm", Locale.US).format(Date(now))
     val unit = p.tpmsUnit
     val wheels = TPMS_WHEELS.map { k -> tp[k]?.let { fmt(tpmsConv(it.bar, unit), tpmsDec(unit)) } ?: "--" }
@@ -150,88 +144,97 @@ fun rememberHudData(obd: ObdData, media: MediaInfo, p: UiPrefs): HudData {
         fuel = if (ok) fuel else "--",
         tpms = wheels,
         tpmsUnit = tpmsUnitLabel(unit).replaceFirstChar { it.uppercase() },
-        gear = if (ok) (obd.gear?.toString() ?: "-") else "-",
-        sample = false
+        gear = if (ok) (obd.gear?.toString() ?: "-") else "-"
     )
 }
 
-// ---------- Màn hình ----------
+// ---------- Trang 1 của ba bộ giao diện HUD ----------
+// Toàn màn hình: không có thanh dock và thanh điều hướng; vuốt ngang để sang trang khác.
 @Composable
-fun HudPage(obd: ObdData, media: MediaInfo, nav: Nav, update: (UiPrefs) -> Unit) {
+fun HudHome(obd: ObdData, media: MediaInfo) {
     val t = LocalTheme.current
-    val theme = hudTheme(t.p.hudTheme)
+    val upd = LocalPrefUpdate.current
+    val theme = hudTheme(t.kind)
     val data = rememberHudData(obd, media, t.p)
-    Column(Modifier.fillMaxSize().background(Color(0xFF05080C))) {
-        Box(Modifier.weight(1f).fillMaxWidth()) {
-            HudStage(theme, data, media)
-            // Nút chuyển giao diện [1] [2] [3] ở góc trên; chỉ đổi màu và khung, xe và vị trí các ô giữ nguyên
+    Box(Modifier.fillMaxSize().background(t.bg)) {
+        HudStage(theme, data, media, t.p)
+        // Ba nút chuyển nhanh giữa các bộ HUD (tắt mặc định, bật trong Cài đặt > Hiển thị)
+        if (t.p.hudSwitch) {
             Row(Modifier.offset(6.dp, 5.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 for (n in 1..3) {
-                    val on = t.p.hudTheme == n
+                    val on = t.kind == 4 + n
                     Box(
                         Modifier.size(24.dp).clip(RoundedCornerShape(5.dp))
                             .background(if (on) theme.accent else Color(0x99000000))
                             .border(1.dp, if (on) theme.accent else Color(0x55FFFFFF), RoundedCornerShape(5.dp))
-                            .clickable { update(t.p.copy(hudTheme = n)) },
+                            .clickable { upd(t.p.copy(skin = 4 + n)) },
                         contentAlignment = Alignment.Center
                     ) { Text(n.toString(), color = if (on) Color(0xFF031014) else Color(0xCCFFFFFF), fontSize = 14.sp, fontWeight = FontWeight.Bold) }
                 }
             }
         }
-        BottomBar(nav, null, false, Modifier.fillMaxWidth())
     }
 }
 
+// Một ô thông số ở cột trái hoặc phải
+private class HudCell(val label: String, val value: String, val unit: String, val icon: ImageVector, val twoLine: Boolean = false)
+
 @Composable
-private fun HudStage(theme: HudTheme, d: HudData, media: MediaInfo) {
+private fun HudStage(theme: HudTheme, d: HudData, media: MediaInfo, p: UiPrefs) {
+    val hide = p.hudHide.split(",").toSet()
+    fun show(k: String) = k !in hide
+    val tpms = p.tpmsOn && show("tpms")   // chưa bật cảm biến lốp thì không hiện bốn ô lốp
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val W = maxWidth
         val H = maxHeight
         theme.Back(W, H)
-        // Ảnh xe duy nhất dùng chung cho cả 3 theme
-        HudCar(Modifier.offset(W * 0.25f, H * 0.30f).size(W * 0.50f, W * 0.50f * 435f / 835f))
+        // Ảnh xe do người dùng chọn trong Cài đặt (ảnh theo hồ sơ xe, ảnh riêng, khung dây, bóng xe); dùng chung cho cả 3 bộ giao diện
+        CarImage(Modifier.offset(W * 0.20f, H * 0.27f).size(W * 0.60f, H * 0.60f), 0.82f)
         theme.Front(d, W, H)
 
-        TimeCard(theme, d, W, H)
-        MusicCard(theme, d, media, W, H)
+        if (show("time")) TimeCard(theme, d, W, H)
+        if (show("music")) MusicCard(theme, d, media, W, H)
 
-        val lx = 0.03f
-        val rx = 0.785f
-        val tw = 0.185f
-        val th = 0.12f
-        StatTile(theme, W, H, lx, 0.252f, tw, th, "FL", d.tpms[0], d.tpmsUnit, Icons.Filled.Album)
-        StatTile(theme, W, H, lx, 0.38f, tw, th, "ENGINE LOAD", d.load, "%", Icons.Filled.Speed)
-        StatTile(theme, W, H, lx, 0.508f, tw, th, "NHIỆT ĐỘ NƯỚC", d.coolant, "°C", Icons.Filled.Thermostat)
-        StatTile(theme, W, H, lx, 0.636f, tw, th, "ĐIỆN ÁP ẮC QUY", d.volt, "v", Icons.Filled.BatteryChargingFull)
-        StatTile(theme, W, H, lx, 0.832f, tw, th, "RL", d.tpms[2], d.tpmsUnit, Icons.Filled.Album)
-        StatTile(theme, W, H, rx, 0.252f, tw, th, "FR", d.tpms[1], d.tpmsUnit, Icons.Filled.Album)
-        StatTile(theme, W, H, rx, 0.38f, tw, th, "TỐC ĐỘ", d.speed, "km/h", Icons.Filled.Speed)
-        StatTile(theme, W, H, rx, 0.508f, tw, th, "NHIỆT ĐỘ KHÍ NẠP", d.intake, "°C", Icons.Filled.AcUnit)
-        StatTile(theme, W, H, rx, 0.636f, tw, 0.14f, "MỨC TIÊU THỤ NHIÊN LIỆU", d.fuel, "km/l", Icons.Filled.LocalGasStation, twoLine = true)
-        StatTile(theme, W, H, rx, 0.832f, tw, th, "RR", d.tpms[3], d.tpmsUnit, Icons.Filled.Album)
+        val left = listOfNotNull(
+            if (tpms) HudCell("FL", d.tpms[0], d.tpmsUnit, Icons.Filled.Album) else null,
+            if (show("load")) HudCell("ENGINE LOAD", d.load, "%", Icons.Filled.Speed) else null,
+            if (show("coolant")) HudCell("NHIỆT ĐỘ NƯỚC", d.coolant, "°C", Icons.Filled.Thermostat) else null,
+            if (show("volt")) HudCell("ĐIỆN ÁP ẮC QUY", d.volt, "v", Icons.Filled.BatteryChargingFull) else null,
+            if (tpms) HudCell("RL", d.tpms[2], d.tpmsUnit, Icons.Filled.Album) else null
+        )
+        val right = listOfNotNull(
+            if (tpms) HudCell("FR", d.tpms[1], d.tpmsUnit, Icons.Filled.Album) else null,
+            if (show("speed")) HudCell("TỐC ĐỘ", d.speed, "km/h", Icons.Filled.Speed) else null,
+            if (show("intake")) HudCell("NHIỆT ĐỘ KHÍ NẠP", d.intake, "°C", Icons.Filled.AcUnit) else null,
+            if (show("fuel")) HudCell("MỨC TIÊU THỤ NHIÊN LIỆU", d.fuel, "km/l", Icons.Filled.LocalGasStation, twoLine = true) else null,
+            if (tpms) HudCell("RR", d.tpms[3], d.tpmsUnit, Icons.Filled.Album) else null
+        )
+        // Hai cột dùng chung chiều cao ô: ít ô thì mỗi ô to hơn (tối đa 17% chiều cao); cột trái có thêm dòng hướng đi ở dưới cùng
+        val y0 = 0.25f
+        val span = 0.715f
+        val gap = 0.014f
+        val chip = 0.07f
+        var cell = 0.17f
+        if (left.isNotEmpty()) cell = minOf(cell, (span - chip - gap * left.size) / left.size)
+        if (right.isNotEmpty()) cell = minOf(cell, (span - gap * (right.size - 1)) / right.size)
+        val tw = 0.19f
+        val leftTotal = left.size * cell + gap * left.size + chip
+        var yl = y0 + (span - leftTotal) / 2f
+        for (c in left) {
+            StatTile(theme, W, H, 0.03f, yl, tw, cell, c.label, c.value, c.unit, c.icon, c.twoLine)
+            yl += cell + gap
+        }
+        HudHeading(theme, W, H, 0.03f, yl, tw, chip)
+        val rightTotal = right.size * cell + gap * (right.size - 1).coerceAtLeast(0)
+        var yr = y0 + (span - rightTotal) / 2f
+        for (c in right) {
+            StatTile(theme, W, H, 0.78f, yr, tw, cell, c.label, c.value, c.unit, c.icon, c.twoLine)
+            yr += cell + gap
+        }
 
         HudRpm(theme, d, W, H)
         HudGear(theme, d, W, H)
-        if (d.sample) {
-            Text(
-                "SỐ LIỆU MẪU (chưa nối OBD)", color = Color(0x99FFFFFF), fontSize = 8.sp,
-                modifier = Modifier.offset(W * 0.40f, H * 0.985f - 10.dp).width(W * 0.2f), textAlign = TextAlign.Center
-            )
-        }
     }
-}
-
-@Composable
-private fun HudCar(modifier: Modifier) {
-    Image(
-        painterResource(R.drawable.hud_car), null,
-        modifier.graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }.drawWithContent {
-            drawContent()
-            drawRect(Brush.horizontalGradient(0f to Color.Transparent, 0.09f to Color.Black, 0.91f to Color.Black, 1f to Color.Transparent), blendMode = BlendMode.DstIn)
-            drawRect(Brush.verticalGradient(0f to Color.Transparent, 0.14f to Color.Black, 0.80f to Color.Black, 1f to Color.Transparent), blendMode = BlendMode.DstIn)
-        },
-        contentScale = ContentScale.FillBounds
-    )
 }
 
 // Khung của một ô do theme vẽ; nội dung nằm trong
@@ -370,4 +373,20 @@ fun gearPath(cx: Float, cy: Float, ro: Float, ri: Float, n: Int = 12): androidx.
     }
     p.close()
     return p
+}
+
+// Hướng xe đang đi: mũi tên chỉ đường quay theo hướng, kèm tên hướng và số độ; nằm dưới cùng cột trái
+@Composable
+private fun HudHeading(theme: HudTheme, W: Dp, H: Dp, x: Float, y: Float, w: Float, h: Float) {
+    val heading = rememberHeading()
+    val hh = H.value * h
+    Row(Modifier.offset(W * x, H * y).size(W * w, H * h), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
+        NavArrow(heading, (hh * 0.95f).dp)
+        Spacer(Modifier.width(6.dp))
+        Text(headingLabel(heading), color = theme.ink, fontSize = (hh * 0.52f).sp, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
+        if (heading != null) {
+            val d = (((heading % 360f) + 360f) % 360f).toInt()
+            Text("  " + String.format(Locale.US, "%03d°", d), color = theme.label, fontSize = (hh * 0.42f).sp, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
+        }
+    }
 }

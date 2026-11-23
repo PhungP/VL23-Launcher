@@ -73,7 +73,6 @@ import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.Explore
 import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.Navigation
-import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material.icons.filled.MyLocation
@@ -486,13 +485,12 @@ fun LauncherApp(update: (UiPrefs) -> Unit, openSettings: () -> Unit, openDialer:
                 "telemetry" -> TelemetryPage(obd, nav, update)
                 "apps" -> AppsPage(apps, obd, nav)
                 "map" -> MapPage(obd, nav, update)
-                "hud" -> HudPage(obd, media, nav, update)
                 else -> MusicPage(media, grant, nav)
             }
         }
     }
     // Nút Gemini nổi trên mọi trang (chỉ hiện khi đã nhập khoá API Gemini trong Cài đặt)
-    GeminiOverlay(obd, nav, update)
+    GeminiOverlay(obd, nav, update, order.getOrNull(pager.currentPage) ?: "home")
     }
 }
 
@@ -510,7 +508,8 @@ fun HomePage(obd: ObdData, media: MediaInfo, onGrant: () -> Unit, nav: Nav) {
     val th = LocalTheme.current
     // Trang 1 có ảnh xe riêng nên không hiện hình nền chung: phủ nền đặc phía sau
     Box(Modifier.fillMaxSize().background(th.bg)) {
-        if (th.mono != 0) HomeDigital(obd, media, onGrant, nav)
+        if (th.isHud) HudHome(obd, media)
+        else if (th.mono != 0) HomeDigital(obd, media, onGrant, nav)
         else if (th.p.homeLayout == 1) HomeSport(obd, media, onGrant, nav)
         else HomeClassic(obd, media, onGrant, nav)
     }
@@ -1334,7 +1333,6 @@ fun BottomBar(nav: Nav, boost: Float?, showBoost: Boolean, modifier: Modifier = 
                     "telemetry" -> Icon(Icons.Filled.Speed, null, tint = c, modifier = Modifier.size(bi.dp))
                     "apps" -> Icon(Icons.Filled.Apps, null, tint = c, modifier = Modifier.size(bi.dp))
                     "map" -> Icon(Icons.Filled.LocationOn, null, tint = c, modifier = Modifier.size(bi.dp))
-                    "hud" -> Icon(Icons.Filled.Dashboard, null, tint = c, modifier = Modifier.size(bi.dp))
                     else -> Icon(Icons.Filled.MusicNote, null, tint = c, modifier = Modifier.size(bi.dp))
                 }
             }

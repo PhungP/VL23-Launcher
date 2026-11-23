@@ -287,6 +287,17 @@ private fun StatusText(ok: Boolean) {
     Text(if (ok) "Có" else "Chưa", color = c, fontSize = 19.sp, fontWeight = FontWeight.Bold)
 }
 
+// Các mục của trang Cài đặt: tên và mô tả ngắn hiện trong danh sách
+private val SETTINGS_SECTIONS = listOf(
+    "Giao diện" to "Bộ giao diện, màn hình, cỡ chữ, hình nền, hình xe, màu sắc",
+    "Hiển thị" to "Ô thông số trang 1 và HUD, trang OBD, thứ tự các trang",
+    "Xe và OBD" to "Hồ sơ xe, kết nối OBD, áp suất lốp (TPMS)",
+    "Bản đồ" to "Công cụ bản đồ, dẫn đường, cảnh báo giao thông",
+    "Trợ lý AI" to "Dịch vụ AI, khoá API, nút AI nổi",
+    "Hệ thống" to "Màn hình chính mặc định, quyền, khởi động cùng Tbox",
+    "Về ứng dụng" to "Cập nhật, thông tin ứng dụng"
+)
+
 @Composable
 fun SettingsScreen(
     p: UiPrefs,
@@ -296,8 +307,10 @@ fun SettingsScreen(
     onPickCar: (Uri) -> Unit,
     onClose: () -> Unit,
 ) {
-    // Phím Back trên màn hình thoát khỏi trang Cài đặt
-    BackHandler { onClose() }
+    // Cài đặt chia theo chủ đề: mở vào là danh sách, bấm một mục mới hiện phần cài đặt tương ứng (-1 = danh sách)
+    var sec by remember { mutableStateOf(-1) }
+    // Phím Back trên màn hình: đang ở một mục thì về danh sách, ở danh sách thì thoát trang Cài đặt
+    BackHandler { if (sec >= 0) sec = -1 else onClose() }
     val ctx = LocalContext.current
     val t = LocalTheme.current
     val pick = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
@@ -349,19 +362,52 @@ fun SettingsScreen(
                 .clip(CircleShape).background(t.panelHi).border(px(2), t.accent, CircleShape).clickable { onClose() },
             contentAlignment = Alignment.Center
         ) { Icon(Icons.Filled.Close, "Đóng", tint = t.ink, modifier = Modifier.size(28.dp)) }
-        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+        val scroll = rememberScrollState()
+        LaunchedEffect(sec) { scroll.scrollTo(0) }
+        Column(Modifier.fillMaxSize().verticalScroll(scroll)) {
             Box(Modifier.fillMaxWidth().height(54.dp), contentAlignment = Alignment.Center) {
-                Text("Cài đặt", color = t.ink, fontSize = 28.sp, fontWeight = FontWeight.Bold)
+                Text(if (sec < 0) "Cài đặt" else SETTINGS_SECTIONS[sec].first, color = t.ink, fontSize = 28.sp, fontWeight = FontWeight.Bold)
+                if (sec >= 0) {
+                    Box(
+                        Modifier.align(Alignment.CenterStart).padding(start = 12.dp).clip(RoundedCornerShape(10.dp)).background(t.panelHi)
+                            .border(px(1), t.line, RoundedCornerShape(10.dp)).clickable { sec = -1 }.padding(horizontal = 16.dp, vertical = 8.dp)
+                    ) { Text("‹ Cài đặt", color = t.ink, fontSize = 19.sp, fontWeight = FontWeight.Bold) }
+                }
             }
             Box(Modifier.fillMaxWidth().height(px(2)).background(Brush.horizontalGradient(listOf(t.blueDeep, t.blueLight, t.blueDeep))))
             Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                if (sec < 0) {
+                    val menuShape = RoundedCornerShape(10.dp)
+                    Column(Modifier.fillMaxWidth().clip(menuShape).border(px(1), if (t.mono == 0) t.line else t.ink.copy(alpha = 0.25f), menuShape)) {
+                        SETTINGS_SECTIONS.forEachIndexed { i, m ->
+                            Row(
+                                Modifier.fillMaxWidth().background(rowBrush(i)).clickable { sec = i }.padding(horizontal = 18.dp, vertical = 14.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(Modifier.weight(1f)) {
+                                    Text(m.first, color = t.ink, fontSize = 23.sp, fontWeight = FontWeight.Bold)
+                                    Text(m.second, color = t.muted, fontSize = 15.sp)
+                                }
+                                Text("›", color = t.accent, fontSize = 34.sp, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+                }
 
-                Group("Giao diện") {
+                if (sec == 0) Group("Giao diện") {
                     choice(
-                        "Bộ giao diện", listOf("Đồng hồ", "Robot", "SciFi"), when (p.skin) { 3 -> 1; 4 -> 2; else -> 0 },
-                        "Đồng hồ: nền đen, dải xanh dương, mục đang chọn màu cam. " +
-                            "Robot: kim loại xám, đinh tán, đèn hổ phách. SciFi: nền xanh đen, viền neon xanh lơ và hồng tím."
-                    ) { onChange(p.copy(skin = listOf(0, 3, 4)[it])) }
+                        "Bộ giao diện", listOf("Đồng hồ", "SU-35", "Orange", "Cyber"), listOf(0, 5, 6, 7).indexOf(p.skin).coerceAtLeast(0),
+                        "Đồng hồ: nền đen, dải xanh dương, mục đang chọn màu cam. Ba bộ HUD đổi màu và khung cho mọi trang: SU-35 Combat (cyan neon, góc cắt chéo), " +
+                            "Orange Sport (cam neon, khung lục giác), Cyberpunk (cyan và kim loại cơ khí). Với ba bộ HUD, trang 1 là màn hình HUD toàn màn hình hiện số liệu OBD thật " +
+                            "(không có thanh dock, vuốt ngang để sang trang khác); vẫn đổi được hình xe ở mục Hình nền và khung."
+                    ) {
+                        val sk = listOf(0, 5, 6, 7)[it]
+                        var q = p.copy(skin = sk)
+                        // Bộ HUD + hồ sơ xe có ảnh drift: chọn sẵn ảnh đó cho đúng thiết kế (đổi lại được ở mục Hình xe)
+                        val dp = Vehicles.byId(p.vehicle).photos.indexOfFirst { ph -> ph.res == R.drawable.hud_car }
+                        if (sk >= 5 && dp >= 0 && p.carImg == 0) q = q.copy(carPhoto = dp)
+                        onChange(q)
+                    }
                     choice(
                         "Bố cục trang 1", listOf("Bố cục mới", "Thể thao"), p.homeLayout,
                         "Chỉ áp dụng cho bộ Đồng hồ xe. Bố cục mới: ảnh xe ở giữa và 6 ô chỉ số. Thể thao: đồng hồ vòng tua dạng cung, la bàn và số cấp lớn ở giữa."
@@ -381,7 +427,7 @@ fun SettingsScreen(
                     tg("Ẩn thanh trạng thái hệ thống", p.hideBar) { onChange(p.copy(hideBar = it)) }
                 }
 
-                Group("Hồ sơ xe") {
+                if (sec == 2) Group("Hồ sơ xe") {
                     val cur = Vehicles.byId(p.vehicle)
                     for (v in Vehicles.all) {
                         val sel = v.id == cur.id
@@ -401,7 +447,7 @@ fun SettingsScreen(
                     if (cur.gearRatios.isEmpty()) note("Hồ sơ chung không có bảng tỉ số, nên chỉ hiện cấp số khi xe tự báo qua OBD.")
                 }
 
-                Group("Hình nền và khung") {
+                if (sec == 0) Group("Hình nền và khung") {
                     choice(
                         "Hình nền", listOf("Đen trơn", "Địa hình", "Chuyển màu", "Ảnh của bạn"), p.bgStyle,
                         "Hình nền hiện phía sau các trang Ứng dụng, thông số OBD và Nhạc. Trang 1 dùng ảnh xe riêng nên không áp dụng hình nền. Khung trong suốt để nhìn xuyên ra hình nền."
@@ -432,10 +478,28 @@ fun SettingsScreen(
                     }
                 }
 
-                Group("Trang 1: xe, thông số, cấp số") {
+                if (sec == 1) Group("HUD (bộ giao diện SU-35, Orange, Cyber)") {
+                    note("Áp dụng khi đang dùng một trong ba bộ giao diện HUD (Cài đặt > Giao diện). Tắt bớt ô để các ô còn lại to và dễ nhìn hơn; ô áp suất lốp chỉ hiện khi bật TPMS ở mục Xe và OBD.")
+                    val hide = p.hudHide.split(",").filter { it.isNotEmpty() }.toSet()
+                    fun hudTg(k: String, title: String) = tg(title, k !in hide) { on ->
+                        onChange(p.copy(hudHide = (if (on) hide - k else hide + k).joinToString(",")))
+                    }
+                    hudTg("time", "Giờ và thời tiết")
+                    hudTg("music", "Nhạc đang phát")
+                    hudTg("speed", "Tốc độ")
+                    hudTg("load", "Tải động cơ")
+                    hudTg("coolant", "Nhiệt độ nước")
+                    hudTg("intake", "Nhiệt độ khí nạp")
+                    hudTg("volt", "Điện áp ắc quy")
+                    hudTg("fuel", "Mức tiêu thụ nhiên liệu")
+                    hudTg("tpms", "Áp suất 4 lốp")
+                    tg("Hiện nút [1] [2] [3] chuyển nhanh bộ HUD", p.hudSwitch) { onChange(p.copy(hudSwitch = it)) }
+                }
+
+                if (sec == 1) Group("Trang 1: xe, thông số, cấp số") {
                     choice(
                         "Hình xe", listOf("Ảnh hồ sơ", "Ảnh riêng", "Khung dây", "Bóng xe"), p.carImg,
-                        "Ảnh riêng: chọn ảnh xe của bạn (nên dùng PNG nền trong suốt). Khung dây và Bóng xe là hình vẽ vector, hợp với giao diện Robot và SciFi."
+                        "Ảnh riêng: chọn ảnh xe của bạn (nên dùng PNG nền trong suốt). Khung dây và Bóng xe là hình vẽ vector, hợp với các bộ giao diện HUD."
                     ) { onChange(p.copy(carImg = it)) }
                     full { bg -> Line(bg, "Màu chữ") { Swatches(p.homeText) { onChange(p.copy(homeText = it)) } } }
                     full { bg -> Line(bg, "Màu viền hộp") { Swatches(p.homeLine) { onChange(p.copy(homeLine = it)) } } }
@@ -487,12 +551,12 @@ fun SettingsScreen(
                             }
                         }
                     }
-                    line("Khôi phục thông số mặc định", "Thông số chỉ hiện khi xe thực sự trả về giá trị; chưa có thì hiện --. Áp dụng cho bộ giao diện Đồng hồ, Robot, SciFi (bố cục mới).") {
+                    line("Khôi phục thông số mặc định", "Thông số chỉ hiện khi xe thực sự trả về giá trị; chưa có thì hiện --. Áp dụng cho bộ giao diện Đồng hồ (bố cục mới); ba bộ HUD dùng các ô riêng ở mục Hiển thị > HUD.") {
                         Btn("Khôi phục") { onChange(p.copy(homeTiles = UiPrefs().homeTiles)) }
                     }
                 }
 
-                Group("Trang OBD: kiểu hiển thị thông số") {
+                if (sec == 1) Group("Trang OBD: kiểu hiển thị thông số") {
                     val obdNames = listOf("Thẻ", "Số", "Kim", "Cung", "Thanh", "Số điện tử", "Đồ thị")
                     line("Kiểu hiển thị", "Thẻ: số kèm thanh nhỏ như các bản trước. Các kiểu còn lại vẽ giống ô ở trang 1: số, đồng hồ kim, đồng hồ cung, thanh ngang, số điện tử 7 đoạn, đồ thị theo thời gian.") {
                         Stepper(
@@ -504,20 +568,23 @@ fun SettingsScreen(
                     choice("Số cột thông số", listOf("3", "4", "5", "6"), p.obdCols.coerceIn(3, 6) - 3, "Ít cột thì ô to, dễ nhìn; nhiều cột thì hiện được nhiều thông số cùng lúc. Độ dày viền chỉnh ở nhóm Trang 1.") { onChange(p.copy(obdCols = it + 3)) }
                 }
 
-                Group("Trợ lý AI (Gemini và dịch vụ miễn phí khác)") {
+                if (sec == 4) Group("Trợ lý AI (Gemini và dịch vụ miễn phí khác)") {
                     note(
                         "Nhập khoá API của một hoặc nhiều dịch vụ để hiện nút AI nổi trên mọi trang: nói để tìm đường, hỏi về tình trạng xe, giải thích mã lỗi, nhận xét chuyến đi. " +
                             "Dịch vụ chính được hỏi trước; nếu hết hạn mức, quá tải hoặc quá chậm, app tự chuyển sang dịch vụ khác đã nhập khoá. " +
                             "Khoá chỉ lưu trên máy bạn. Khi dùng, câu hỏi hoặc đoạn ghi âm, vị trí xe (khi tìm đường) và số liệu xe hiện có được gửi tới dịch vụ đang dùng. " +
                             "Câu trả lời của AI chỉ để tham khảo, không thay thế thợ kỹ thuật; khi có đèn cảnh báo nghiêm trọng hãy dừng xe ở nơi an toàn."
                     )
-                    val sel = AI_PROVIDERS[p.aiProvider.coerceIn(0, AI_PROVIDERS.size - 1)]
+                    val sel = aiProv(aiNormId(p.aiProvider))
                     choice(
-                        "Dịch vụ chính", AI_PROVIDERS.map { it.short + (if (aiReady(p, it.id)) " ✓" else "") }, sel.id,
+                        "Dịch vụ chính", AI_PROVIDERS.map { it.short + (if (aiReady(p, it.id)) " ✓" else "") }, AI_PROVIDERS.indexOfFirst { it.id == sel.id },
                         "Dấu ✓ là dịch vụ đã nhập khoá. Chọn từng dịch vụ để nhập khoá của nó."
-                    ) { onChange(p.copy(aiProvider = it)) }
+                    ) { onChange(p.copy(aiProvider = AI_PROVIDERS[it].id)) }
                     note(sel.title + ": " + sel.note + (if (sel.keyUrl.isNotEmpty()) " Lấy khoá tại " + sel.keyUrl + "." else ""))
-                    full { bg -> Line(bg, "Khoá API " + sel.short) { Box(Modifier.width(300.dp)) { KeyField(aiKey(p, sel.id), "Dán khoá API vào đây") { onChange(p.withAi(sel.id, key = it)) } } } }
+                    if (sel.id == 6) {
+                        full { bg -> Line(bg, "Account ID Cloudflare") { Box(Modifier.width(300.dp)) { KeyField(aiAcct(p), "Dán Account ID vào đây") { onChange(p.withAi(6, acct = it)) } } } }
+                    }
+                    full { bg -> Line(bg, if (sel.id == 6) "API token Cloudflare" else "Khoá API " + sel.short) { Box(Modifier.width(300.dp)) { KeyField(aiKey(p, sel.id), "Dán khoá API vào đây") { onChange(p.withAi(sel.id, key = it)) } } } }
                     full { bg -> Line(bg, "Mô hình") { Box(Modifier.width(300.dp)) { KeyField(aiModelRaw(p, sel.id), if (sel.defModel.isEmpty()) "Tên mô hình" else sel.defModel) { onChange(p.withAi(sel.id, model = it)) } } } }
                     if (sel.id == 5) {
                         full { bg -> Line(bg, "Địa chỉ API") { Box(Modifier.width(300.dp)) { KeyField(aiUrl(p, 5), "https://.../v1") { onChange(p.withAi(5, url = it)) } } } }
@@ -530,16 +597,18 @@ fun SettingsScreen(
                     if (p.geminiPos.isNotEmpty()) line("Đưa nút AI về vị trí mặc định") { Btn("Đặt lại") { onChange(p.copy(geminiPos = "")) } }
                 }
 
-                Group("HUD Dashboard") {
-                    choice(
-                        "Giao diện HUD", listOf("1 SU-35 Combat", "2 Orange Sport", "3 Cyberpunk"), p.hudTheme.coerceIn(1, 3) - 1,
-                        "Cũng đổi được ngay trên trang HUD bằng ba nút [1] [2] [3] ở góc trên. Ba giao diện chỉ khác màu và khung; xe, vị trí các ô và số liệu giữ nguyên."
-                    ) { onChange(p.copy(hudTheme = it + 1)) }
-                    tg("Hiện số liệu mẫu khi chưa nối OBD", p.hudSample) { onChange(p.copy(hudSample = it)) }
-                    note("Trang HUD Dashboard nằm trong danh sách trang (đổi chỗ ở mục Thứ tự các trang). Khi OBD đã nối, HUD hiện số liệu thật: vòng tua, tốc độ, tải động cơ, nhiệt độ nước, nhiệt độ khí nạp, điện áp, mức tiêu thụ, số gear, áp suất 4 lốp (nếu bật TPMS), thời tiết và nhạc đang phát.")
+                if (sec == 4) Group("Nút AI nổi") {
+                    tg("Hiện nút AI nổi", p.aiFab) { onChange(p.copy(aiFab = it)) }
+                    if (p.aiFab) {
+                        val pages = p.aiFabPages.split(",").filter { it.isNotEmpty() }.toSet()
+                        for (id in PAGE_IDS) {
+                            tg("Hiện ở " + pageName(id), id in pages) { on -> onChange(p.copy(aiFabPages = (if (on) pages + id else pages - id).joinToString(","))) }
+                        }
+                    }
+                    note("Mặc định chỉ hiện ở trang 1. Nút kéo được để đổi chỗ. Chưa nhập khoá API nào thì nút không hiện.")
                 }
 
-                Group("TPMS: áp suất lốp (cảm biến mua ngoài)") {
+                if (sec == 2) Group("TPMS: áp suất lốp (cảm biến mua ngoài)") {
                     tg("Đọc cảm biến TPMS qua Bluetooth", p.tpmsOn) { onChange(p.copy(tpmsOn = it)) }
                     if (p.tpmsOn) {
                         choice("Đơn vị áp suất", listOf("bar", "psi", "kPa"), p.tpmsUnit) { onChange(p.copy(tpmsUnit = it)) }
@@ -563,7 +632,7 @@ fun SettingsScreen(
                     )
                 }
 
-                Group("Trang và điều hướng") {
+                if (sec == 1) Group("Trang và điều hướng") {
                     val order = parsePageOrder(p.pageOrder)
                     order.forEachIndexed { i, id ->
                         line("${i + 1}. " + pageName(id)) {
@@ -588,7 +657,7 @@ fun SettingsScreen(
                     }
                 }
 
-                Group("Xe và OBD") {
+                if (sec == 2) Group("Xe và OBD") {
                     choice("Nguồn dữ liệu OBD", listOf("Kết nối trực tiếp", "Torque Pro"), p.obdSource) { onChange(p.copy(obdSource = it)) }
                     line("Trạng thái kết nối", obd.status)
                     if (p.obdSource == 1) {
@@ -608,7 +677,7 @@ fun SettingsScreen(
                     ) { onChange(p.copy(gearTrim = it)) }
                 }
 
-                Group("Bản đồ") {
+                if (sec == 3) Group("Bản đồ") {
                     // mapEngine giữ số cũ: 0 MapTiler, 1 OSM, 3 Goong (số 2 là Google Maps đã bỏ) nên danh sách chọn có 3 mục
                     choice("Công cụ bản đồ", listOf("MapLibre + MapTiler", "OSM đơn giản", "MapLibre + Goong"), if (p.mapEngine == 3) 2 else p.mapEngine.coerceAtMost(1)) { onChange(p.copy(mapEngine = if (it == 2) 3 else it)) }
                     if (p.mapEngine == 3) {
@@ -651,12 +720,12 @@ fun SettingsScreen(
                     )
                 }
 
-                Group("Cảnh báo giao thông") {
+                if (sec == 3) Group("Cảnh báo giao thông") {
                     tg("Cảnh báo giới hạn tốc độ và camera", p.trafficAlert) { onChange(p.copy(trafficAlert = it)) }
                     tg("Âm báo khi cảnh báo", p.alertSound) { onChange(p.copy(alertSound = it)) }
                 }
 
-                Group("Hệ thống") {
+                if (sec == 5) Group("Hệ thống") {
                     tg("Tự khởi động cùng Tbox", p.autoStart) { onChange(p.copy(autoStart = it)) }
                     status("Là màn hình chính mặc định", isHome)
                     status("Quyền hiện trên ứng dụng khác", overlay)
@@ -678,7 +747,7 @@ fun SettingsScreen(
                         Btn("Cấp quyền") { open(Intent(android.provider.Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)) }
                     }
                 }
-                Group("Cập nhật ứng dụng") {
+                if (sec == 6) Group("Cập nhật ứng dụng") {
                     line("Phiên bản đang dùng") { Text(BuildConfig.VERSION_NAME, color = t.ink, fontSize = 19.sp, fontWeight = FontWeight.Bold) }
                     when (upd.phase) {
                         UpdPhase.IDLE -> line("Kiểm tra bản mới trên GitHub") { Btn("Kiểm tra") { Updater.check() } }
@@ -700,7 +769,7 @@ fun SettingsScreen(
                     )
                 }
 
-                Group("Giới thiệu") {
+                if (sec == 6) Group("Giới thiệu") {
                     line("Ứng dụng") { Text(APP_NAME, color = t.ink, fontSize = 19.sp, fontWeight = FontWeight.Bold) }
                     line("Nhà phát triển") { Text(DEV_NAME, color = t.ink, fontSize = 19.sp, fontWeight = FontWeight.Bold) }
                     line("Trang ứng dụng trên GitHub", REPO_URL) {
