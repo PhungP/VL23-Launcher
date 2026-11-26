@@ -41,20 +41,28 @@ object Updater {
     val state: StateFlow<UpdState> = _state
     private var job: Job? = null
 
-    // "v0.10.1" -> [0, 10, 1]
-    private fun parse(v: String): List<Int> =
-        v.trim().removePrefix("v").removePrefix("V").split('.', '-', '_', ' ')
-            .mapNotNull { part -> part.takeWhile { it.isDigit() }.toIntOrNull() }
+    fun isNewer(latest: String, current: String): Boolean = isNewerVersion(latest, current)
 
-    fun isNewer(latest: String, current: String): Boolean {
-        val a = parse(latest)
-        val b = parse(current)
-        for (i in 0 until maxOf(a.size, b.size)) {
-            val x = a.getOrElse(i) { 0 }
-            val y = b.getOrElse(i) { 0 }
-            if (x != y) return x > y
+    // Kiểm tra file .apk đã tải: đúng package, versionCode mới hơn bản đang cài và cùng chữ ký với bản đang cài.
+    // Trả về null nếu hợp lệ, ngược lại trả về lý do (tiếng Việt) để hiển thị cho người dùng.
+    @Suppress("DEPRECATION")
+    private fun validateApk(ctx: Context, f: File): String? {
+        val pm = ctx.packageManager
+        val flags = if (Build.VERSION.SDK_INT >= 28) android.content.pm.PackageManager.GET_SIGNING_CERTIFICATES
+                    else android.content.pm.PackageManager.GET_SIGNATURES
+        val archive = pm.getPackageArchiveInfo(f.absolutePath, flags) ?: return "File tải về không phải gói APK hợp lệ"
+        if (archive.packageName != ctx.packageName) return "File tải về không đúng ứng dụng (${archive.packageName})"
+        val cur = pm.getPackageInfo(ctx.packageName, flags)
+        val curCode = if (Build.VERSION.SDK_INT >= 28) cur.longVersionCode else cur.versionCode.toLong()
+        val newCode = if (Build.VERSION.SDK_INT >= 28) archive.longVersionCode else archive.versionCode.toLong()
+        if (newCode <= curCode) return "Bản tải về không mới hơn bản đang cài"
+        fun sigs(i: android.content.pm.PackageInfo): Set<String> {
+            val arr = if (Build.VERSION.SDK_INT >= 28) i.signingInfo?.apkContentsSigners else i.signatures
+            return arr?.map { java.security.MessageDigest.getInstance("SHA-256").digest(it.toByteArray()).joinToString("") { b -> "%02x".format(b) } }?.toSet() ?: emptySet()
         }
-        return false
+        val a = sigs(archive)
+        if (a.isEmpty() || a != sigs(cur)) return "Chữ ký bản tải về khác bản đang cài, Android sẽ không cho cập nhật đè"
+        return null
     }
 
     fun check() {
@@ -111,6 +119,7 @@ object Updater {
                 dir.listFiles()?.forEach { it.delete() }
                 val out = File(dir, "VL23-Launcher.apk")
                 val tmp = File(dir, "download.tmp")
+                var expected: Long
                 val c = URL(s.apkUrl).openConnection() as HttpURLConnection
                 try {
                     c.connectTimeout = 10000
@@ -119,6 +128,7 @@ object Updater {
                     c.setRequestProperty("User-Agent", APP_UA)
                     if (c.responseCode != 200) throw java.io.IOException("HTTP " + c.responseCode)
                     val total = c.contentLengthLong
+                    expected = total
                     var done = 0L
                     var lastPct = -1
                     c.inputStream.use { i ->
@@ -140,7 +150,9 @@ object Updater {
                     c.disconnect()
                 }
                 if (tmp.length() < 100_000L) throw java.io.IOException("File tải về không hợp lệ")
-                tmp.renameTo(out)
+                if (expected > 0 && tmp.length() != expected) throw java.io.IOException("Tải chưa đủ dung lượng, thử lại")
+                validateApk(ctx.applicationContext, tmp)?.let { tmp.delete(); throw java.io.IOException(it) }
+                if (!tmp.renameTo(out)) throw java.io.IOException("Không lưu được file cập nhật")
                 _state.update { it.copy(phase = UpdPhase.READY, progress = 100) }
                 install(ctx.applicationContext)
             } catch (e: kotlinx.coroutines.CancellationException) {
@@ -173,4 +185,20 @@ object Updater {
             _state.update { it.copy(phase = UpdPhase.ERROR, error = "Không mở được trình cài đặt, hãy mở trang GitHub để tải thủ công") }
         }
     }
+}
+
+// "v0.10.1" -> [0, 10, 1]; tách riêng khỏi Updater để kiểm thử được
+internal fun parseVersion(v: String): List<Int> =
+    v.trim().removePrefix("v").removePrefix("V").split('.', '-', '_', ' ')
+        .mapNotNull { part -> part.takeWhile { it.isDigit() }.toIntOrNull() }
+
+internal fun isNewerVersion(latest: String, current: String): Boolean {
+    val a = parseVersion(latest)
+    val b = parseVersion(current)
+    for (i in 0 until maxOf(a.size, b.size)) {
+        val x = a.getOrElse(i) { 0 }
+        val y = b.getOrElse(i) { 0 }
+        if (x != y) return x > y
+    }
+    return false
 }

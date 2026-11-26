@@ -120,7 +120,7 @@ object ObdManager {
     }
 
     // Trả lời dịch vụ 03 của ELM327: "43 02 01 33 01 34 00" (CAN: 43, số mã, rồi từng cặp byte). Hai byte đầu của mã: 2 bit chữ cái P C B U, 2 bit chữ số, 4 bit chữ số hex
-    private fun parseDtc(raw: String): List<String> {
+    internal fun parseDtc(raw: String): List<String> {
         val up = raw.uppercase()
         if (up.contains("NO DATA")) return emptyList()
         val sb = StringBuilder()

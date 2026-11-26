@@ -9,8 +9,8 @@ android {
         applicationId = "vn.navara.launcher"
         minSdk = 28
         targetSdk = 34
-        versionCode = 28
-        versionName = "0.28"
+        versionCode = 29
+        versionName = "0.29"
         // Tbox S1 là arm64: chỉ đóng gói thư viện native (MapLibre) cho arm64-v8a để APK nhẹ hơn nhiều.
         // Nếu máy báo không cài được hoặc bản đồ lỗi, thêm "armeabi-v7a" vào danh sách này.
         ndk { abiFilters += listOf("arm64-v8a") }
@@ -56,5 +56,6 @@ dependencies {
     implementation("androidx.activity:activity-compose:1.9.0")
     implementation("androidx.core:core-ktx:1.13.1")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
+    testImplementation("junit:junit:4.13.2")
     implementation("org.maplibre.gl:android-sdk:11.8.0")   // MapLibre Native: bản đồ vector mã nguồn mở
 }
