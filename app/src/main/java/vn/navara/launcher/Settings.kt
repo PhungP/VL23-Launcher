@@ -48,6 +48,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -426,6 +427,25 @@ fun SettingsScreen(
                     if (p.navaraIcons || p.whiteIcons) tg("Biểu tượng xanh kết hợp trắng (theo tông đồng hồ xe)", p.iconBlue) { onChange(p.copy(iconBlue = it)) }
                     tg("Thanh tiêu đề phía trên", p.titleBar) { onChange(p.copy(titleBar = it)) }
                     tg("Ẩn thanh trạng thái hệ thống", p.hideBar) { onChange(p.copy(hideBar = it)) }
+                }
+
+                if (sec == 2) {
+                    val dg by produceState(0L) { while (true) { value = System.currentTimeMillis(); delay(1000) } }
+                    val od by ObdManager.data.collectAsState()
+                    val stt = ObdManager.stats
+                    val ago = ObdManager.lastRxMs.let { if (it == 0L) "chưa có" else "${(dg - it) / 1000} giây trước" }
+                    Group("Chẩn đoán OBD") {
+                        line("Trạng thái") { Text(od.status, color = LocalTheme.current.ink, fontSize = 16.sp, fontWeight = FontWeight.Bold) }
+                        line("Adapter") { Text(ObdManager.adapterLabel.ifEmpty { "—" }, color = LocalTheme.current.ink, fontSize = 18.sp, fontWeight = FontWeight.Bold) }
+                        line("Dữ liệu cuối nhận được") { Text(ago, color = LocalTheme.current.ink, fontSize = 18.sp, fontWeight = FontWeight.Bold) }
+                        line("Độ trễ phản hồi (trung bình / gần nhất)") { Text(if (stt.ok == 0L) "—" else "%.0f / %d ms".format(stt.avgLatencyMs, stt.lastLatencyMs), color = LocalTheme.current.ink, fontSize = 18.sp, fontWeight = FontWeight.Bold) }
+                        line("Tần suất hỏi") { Text("%.1f lần/giây".format(stt.pollRate(dg)), color = LocalTheme.current.ink, fontSize = 18.sp, fontWeight = FontWeight.Bold) }
+                        line("Phản hồi thành công / hết giờ / lỗi") { Text("${stt.ok} / ${stt.timeouts} / ${stt.errors}", color = LocalTheme.current.ink, fontSize = 18.sp, fontWeight = FontWeight.Bold) }
+                        line("Số lần mất kết nối") { Text("${stt.disconnects}", color = LocalTheme.current.ink, fontSize = 18.sp, fontWeight = FontWeight.Bold) }
+                        line("Số PID xe báo hỗ trợ") { Text(if (od.pidCount == 0) "—" else "${od.pidCount}", color = LocalTheme.current.ink, fontSize = 18.sp, fontWeight = FontWeight.Bold) }
+                        line("Đặt lại bộ đếm") { Btn("Đặt lại") { stt.reset() } }
+                        note("Số liệu tính từ lúc kết nối OBD hiện tại. Nếu nhiều lệnh hết giờ hoặc độ trễ cao, hãy kiểm tra nguồn và vị trí adapter.")
+                    }
                 }
 
                 if (sec == 2) Group("Hồ sơ xe") {

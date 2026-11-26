@@ -199,6 +199,7 @@ object ObdManager {
         lastGood.clear(); pending.clear(); med.clear(); suffix = ""; rr = 0; zeroRpm = 0; gearNullSince = 0L; kEma = 0.0
         _data.value = ObdData()
         lastRxMs = 0L
+        stats.reset(); adapterLabel = ""
         start(ctx)
     }
 
@@ -257,6 +258,7 @@ object ObdManager {
                     continue
                 }
                 lbl = t.label
+                adapterLabel = lbl
                 st("Đã nối $lbl, đang khởi tạo…")
                 delay(400)
                 for (c in listOf("ATZ", "ATE0", "ATL0", "ATS0", "ATH0", "ATAT1", "ATSP0")) {
@@ -286,13 +288,24 @@ object ObdManager {
             } finally {
                 t?.close()
             }
+            if (lbl.isNotEmpty()) stats.disconnect()
             _data.update { ObdData(status = "Mất kết nối ($err) $lbl") }
             delay(3000)
         }
     }
 
-    private suspend fun soft(t: Transport, cmd: String, ms: Long): String? =
-        try { t.request(cmd, ms) } catch (e: IOException) { if (e.message == "timeout") null else throw e }
+    /** Thống kê kết nối cho màn hình chẩn đoán OBD. */
+    val stats = ObdStats()
+    @Volatile var adapterLabel = ""; private set
+
+    private suspend fun soft(t: Transport, cmd: String, ms: Long): String? {
+        val t0 = System.currentTimeMillis()
+        return try {
+            t.request(cmd, ms).also { stats.success(System.currentTimeMillis(), System.currentTimeMillis() - t0) }
+        } catch (e: IOException) {
+            if (e.message == "timeout") { stats.timeout(); null } else { stats.error(); throw e }
+        }
+    }
 
     // Xe có nhiều ECU (động cơ, hộp số...) cùng trả lời một lệnh OBD. Nếu lấy dòng trả lời đầu tiên, khi thì được ECU động cơ
     // (vòng tua 800), khi thì ECU khác (0), làm số liệu chập chờn và danh sách PID hỗ trợ đổi liên tục.
