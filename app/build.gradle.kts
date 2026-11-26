@@ -1,7 +1,18 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
 }
+// Khoá phát hành: khai báo trong keystore.properties (nằm ở thư mục gốc dự án, đã có trong .gitignore, KHÔNG đưa lên Git).
+// Có tệp này thì Android Studio / Gradle tự ký bản release bằng khoá đó. Không có thì bản release không được ký:
+// dùng Build > Generate Signed App Bundle / APK của Android Studio (hỏi mật khẩu) hoặc ./release.sh.
+// Không bao giờ ký release bằng khoá debug, vì khoá debug mỗi máy một khác và sẽ không cập nhật đè được bản đang cài.
+val ksFile = rootProject.file("keystore.properties")
+val ksProps = Properties().apply { if (ksFile.exists()) ksFile.inputStream().use { load(it) } }
+val ksPath: String? = ksProps.getProperty("storeFile")?.let { if (it.startsWith("~")) System.getProperty("user.home") + it.substring(1) else it }
+val useReleaseKey = ksPath != null && file(ksPath).exists() && System.getenv("VL23_NO_GRADLE_SIGN") == null
+
 android {
     namespace = "vn.navara.launcher"
     compileSdk = 34
@@ -18,12 +29,22 @@ android {
         // Khoá MapTiler: khai báo MAPTILER_KEY=... trong gradle.properties (hoặc nhập trong Cài đặt của app)
         buildConfigField("String", "MAPTILER_KEY", "\"" + (project.findProperty("MAPTILER_KEY") ?: "") + "\"")
     }
+    signingConfigs {
+        if (useReleaseKey) create("vl23Release") {
+            storeFile = file(ksPath!!)
+            storePassword = ksProps.getProperty("storePassword")
+            keyAlias = ksProps.getProperty("keyAlias", "key0")
+            keyPassword = ksProps.getProperty("keyPassword") ?: ksProps.getProperty("storePassword")
+        }
+    }
     buildTypes {
         release {
+            if (useReleaseKey) signingConfig = signingConfigs.getByName("vl23Release")
             isMinifyEnabled = true          // R8: bỏ mã không dùng (đặc biệt bộ icon Material mở rộng rất nặng)
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-            signingConfig = signingConfigs.getByName("debug")   // ký bằng khoá debug để cài thẳng được; đổi sang khoá riêng nếu cần
+            // Không ký trong Gradle: bản release phải được ký bằng khoá phát hành thật qua ./release.sh (hỏi mật khẩu khi chạy).
+            // Trước đây dùng khoá debug của từng máy build nên APK có thể bị khác khoá bản đang cài và không cập nhật đè được.
         }
     }
     packaging {
