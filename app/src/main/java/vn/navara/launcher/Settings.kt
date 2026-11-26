@@ -295,7 +295,8 @@ private val SETTINGS_SECTIONS = listOf(
     "Bản đồ" to "Công cụ bản đồ, dẫn đường, cảnh báo giao thông",
     "Trợ lý AI" to "Dịch vụ AI, khoá API, nút AI nổi",
     "Hệ thống" to "Màn hình chính mặc định, quyền, khởi động cùng Tbox",
-    "Về ứng dụng" to "Cập nhật, thông tin ứng dụng"
+    "Về ứng dụng" to "Cập nhật, thông tin ứng dụng",
+    "Cảnh báo và chế độ lái" to "Ngưỡng cảnh báo, lịch sử cảnh báo, chế độ lái / đỗ / ban đêm"
 )
 
 @Composable
@@ -747,6 +748,46 @@ fun SettingsScreen(
                         Btn("Cấp quyền") { open(Intent(android.provider.Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)) }
                     }
                 }
+                if (sec == 7) {
+                    val ctxS = LocalContext.current
+                    val ac by VehicleMonitor.alertConfig.collectAsState()
+                    val mc by VehicleMonitor.modeConfig.collectAsState()
+                    val ov by VehicleMonitor.override.collectAsState()
+                    val lock by VehicleMonitor.lockSettingsWhileDriving.collectAsState()
+                    val aNight by VehicleMonitor.autoNight.collectAsState()
+                    val hist by VehicleMonitor.history.collectAsState()
+                    val modeNow by VehicleMonitor.mode.collectAsState()
+                    val setA: (AlertConfig) -> Unit = { VehicleMonitor.alertConfig.value = it; VehicleMonitor.save(ctxS) }
+                    val setM: (ModeConfig) -> Unit = { VehicleMonitor.modeConfig.value = it; VehicleMonitor.save(ctxS) }
+                    Group("Chế độ lái / đỗ") {
+                        status("Chế độ hiện tại: " + if (modeNow == DriveMode.DRIVING) "ĐANG LÁI" else "ĐỖ", modeNow == DriveMode.DRIVING)
+                        tg("Tự chuyển theo tốc độ (OBD hoặc GPS)", mc.auto) { setM(mc.copy(auto = it)) }
+                        choice("Chọn thủ công", listOf("Tự động", "Đỗ", "Lái"), ov.ordinal, "Chọn thủ công thắng chế độ tự động; mở lại ứng dụng thì về Tự động.") { VehicleMonitor.override.value = ModeOverride.values()[it] }
+                        line("Vào chế độ lái khi nhanh hơn") { Stepper("${mc.driveKmh} km/h", { setM(mc.copy(driveKmh = (mc.driveKmh - 1).coerceAtLeast(mc.parkKmh + 2))) }, { setM(mc.copy(driveKmh = (mc.driveKmh + 1).coerceAtMost(40))) }) }
+                        line("Về chế độ đỗ khi chậm hơn") { Stepper("${mc.parkKmh} km/h", { setM(mc.copy(parkKmh = (mc.parkKmh - 1).coerceAtLeast(0))) }, { setM(mc.copy(parkKmh = (mc.parkKmh + 1).coerceAtMost(mc.driveKmh - 2))) }) }
+                        tg("Hỏi xác nhận khi mở Cài đặt lúc đang lái", lock) { VehicleMonitor.lockSettingsWhileDriving.value = it; VehicleMonitor.save(ctxS) }
+                        tg("Tự bật chế độ ban đêm 19h – 6h", aNight) { VehicleMonitor.autoNight.value = it; VehicleMonitor.save(ctxS) }
+                        note("Chế độ lái chỉ tự đổi khi tốc độ đọc trực tiếp từ OBD hoặc GPS còn mới; dữ liệu cũ hoặc ước tính không bao giờ làm đổi chế độ. Khi lái: ẩn nút AI nổi, cảnh báo chỉ hiện tiêu đề ngắn.")
+                    }
+                    Group("Cảnh báo xe") {
+                        for ((g, name) in ALERT_GROUPS) tg("Cảnh báo " + name.lowercase(), g !in ac.disabledGroups) { on -> setA(ac.copy(disabledGroups = if (on) ac.disabledGroups - g else ac.disabledGroups + g)) }
+                        line("Nước làm mát: cảnh báo từ") { Stepper("${ac.coolantWarn.toInt()}°C", { setA(ac.copy(coolantWarn = (ac.coolantWarn - 1).coerceAtLeast(80f))) }, { setA(ac.copy(coolantWarn = (ac.coolantWarn + 1).coerceAtMost(ac.coolantCrit - 1))) }) }
+                        line("Nước làm mát: nghiêm trọng từ") { Stepper("${ac.coolantCrit.toInt()}°C", { setA(ac.copy(coolantCrit = (ac.coolantCrit - 1).coerceAtLeast(ac.coolantWarn + 1))) }, { setA(ac.copy(coolantCrit = (ac.coolantCrit + 1).coerceAtMost(130f))) }) }
+                        line("Điện áp thấp dưới") { Stepper("%.1f V".format(ac.voltLow), { setA(ac.copy(voltLow = (ac.voltLow - 0.1f).coerceAtLeast(10f))) }, { setA(ac.copy(voltLow = (ac.voltLow + 0.1f).coerceAtMost(13f))) }) }
+                        line("Vòng tua quá cao trên", "0 = theo vạch đỏ của hồ sơ xe.") { Stepper(if (ac.rpmMax <= 0f) "Hồ sơ" else "${ac.rpmMax.toInt()}", { setA(ac.copy(rpmMax = (ac.rpmMax - 250f).coerceAtLeast(0f))) }, { setA(ac.copy(rpmMax = (ac.rpmMax + 250f).coerceAtMost(9000f))) }) }
+                        line("Tăng áp cao trên") { Stepper("%.1f bar".format(ac.boostMax), { setA(ac.copy(boostMax = (ac.boostMax - 0.1f).coerceAtLeast(0.5f))) }, { setA(ac.copy(boostMax = (ac.boostMax + 0.1f).coerceAtMost(4f))) }) }
+                        line("Áp suất lốp thấp dưới") { Stepper("%.1f bar".format(ac.tpmsLowBar), { setA(ac.copy(tpmsLowBar = (ac.tpmsLowBar - 0.1f).coerceAtLeast(1f))) }, { setA(ac.copy(tpmsLowBar = (ac.tpmsLowBar + 0.1f).coerceAtMost(ac.tpmsHighBar - 0.2f))) }) }
+                        line("Áp suất lốp cao trên") { Stepper("%.1f bar".format(ac.tpmsHighBar), { setA(ac.copy(tpmsHighBar = (ac.tpmsHighBar - 0.1f).coerceAtLeast(ac.tpmsLowBar + 0.2f))) }, { setA(ac.copy(tpmsHighBar = (ac.tpmsHighBar + 0.1f).coerceAtMost(5f))) }) }
+                        line("Đặt lại ngưỡng cảnh báo") { Btn("Đặt lại") { VehicleMonitor.resetAlertConfig(ctxS) } }
+                        note("Một điều kiện phải kéo dài vài giây mới báo, và cùng một cảnh báo không lặp lại trong 60 giây. Chỉ dữ liệu đo trực tiếp mới tạo cảnh báo; dữ liệu ước tính, cũ hoặc mất kết nối không báo giả.")
+                    }
+                    Group("Lịch sử cảnh báo (" + hist.size + ")") {
+                        if (hist.isEmpty()) note("Chưa có cảnh báo nào trong lần chạy này.")
+                        for (a in hist.take(12)) full { bg -> Line(bg, alertTime(a.raisedAtMs) + "  " + a.kind.title) { Text(a.level.label + " · " + a.source, color = alertColor(a.level), fontSize = 16.sp, fontWeight = FontWeight.Bold) } }
+                        if (hist.isNotEmpty()) line("Xoá lịch sử") { Btn("Xoá") { VehicleMonitor.clearHistory() } }
+                    }
+                }
+
                 if (sec == 6) Group("Cập nhật ứng dụng") {
                     line("Phiên bản đang dùng") { Text(BuildConfig.VERSION_NAME, color = t.ink, fontSize = 19.sp, fontWeight = FontWeight.Bold) }
                     when (upd.phase) {

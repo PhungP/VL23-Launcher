@@ -84,6 +84,7 @@ fun GeminiOverlay(obd: ObdData, nav: Nav, update: (UiPrefs) -> Unit, pageId: Str
     val p = t.p
     // Chỉ hiện khi đã có khoá API, đang bật nút AI và trang hiện tại nằm trong danh sách trang được chọn (mặc định chỉ trang 1)
     if (!aiAny(p) || !p.aiFab || pageId !in p.aiFabPages.split(",")) return
+    if (VehicleMonitor.mode.collectAsState().value == DriveMode.DRIVING) return   // đang lái: ẩn nút AI để tránh phân tâm
     // Trang 1 của bộ HUD không có thanh dock nên nút nằm sát đáy; các trang khác nâng nút lên trên thanh dock
     val noDock = pageId == "home" && t.isHud
     var open by remember { mutableStateOf(false) }

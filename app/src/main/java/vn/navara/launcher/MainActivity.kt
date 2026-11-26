@@ -340,6 +340,7 @@ fun Root(applyBars: (Boolean) -> Unit) {
         WeatherManager.start(ctx)
         TrafficAlert.start(ctx)
     }
+    LaunchedEffect(Unit) { VehicleMonitor.run(ctx) }
     LaunchedEffect(prefs.trafficAlert) { TrafficAlert.enabled = prefs.trafficAlert }
     // Hồ sơ xe: gán ngay trong lúc dựng giao diện để mọi trang đọc cùng một hồ sơ; lớp OBD đổi bảng tỉ số hộp số
     Vehicles.current = Vehicles.byId(prefs.vehicle)
@@ -361,7 +362,12 @@ fun Root(applyBars: (Boolean) -> Unit) {
             ProvideTextStyle(TextStyle(fontFamily = if (theme.mono == 0) ClusterFont else FontFamily.Default)) {
             Box(Modifier.fillMaxSize()) {
                 Background()
-                LauncherApp(update, { settings = true }, { dialer = true })
+                val driveNow by VehicleMonitor.mode.collectAsState()
+                val lockOn by VehicleMonitor.lockSettingsWhileDriving.collectAsState()
+                var askSettings by remember { mutableStateOf(false) }
+                LauncherApp(update, { if (driveNow == DriveMode.DRIVING && lockOn) askSettings = true else settings = true }, { dialer = true })
+                AlertBanner(Modifier.align(Alignment.TopCenter))
+                if (askSettings) DrivingSettingsPrompt({ askSettings = false; settings = true }, { askSettings = false })
                 if (settings) {
                     SettingsScreen(prefs, obd, update, { uri: Uri ->
                         scope.launch {

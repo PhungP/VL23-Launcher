@@ -153,6 +153,8 @@ object ObdManager {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var job: Job? = null
     private var source = 0
+    /** Lần cuối nhận được dữ liệu thật từ ECU / Torque (để biết dữ liệu còn mới hay đã cũ). */
+    @Volatile var lastRxMs = 0L; private set
     private var baro = 101
 
     // Nguồn cho thanh "engine load": 0 tự động (mô-men → chân ga → tính toán), 1 tính toán PID 04, 2 chân ga PID 49, 3 mô-men PID 62
@@ -196,6 +198,7 @@ object ObdManager {
         a4Fail = 0; hwGear = null; gCand = null; gCnt = 0
         lastGood.clear(); pending.clear(); med.clear(); suffix = ""; rr = 0; zeroRpm = 0; gearNullSince = 0L; kEma = 0.0
         _data.value = ObdData()
+        lastRxMs = 0L
         start(ctx)
     }
 
@@ -218,6 +221,7 @@ object ObdManager {
     }
 
     private fun fromTorque(m: Map<String, String>) {
+        lastRxMs = System.currentTimeMillis()
         fun f(k: String) = m[k]?.toFloatOrNull()
         _data.update { d ->
             val map = f("kb")
@@ -404,6 +408,7 @@ object ObdManager {
             }
             if (got) {
                 empty = 0
+                lastRxMs = System.currentTimeMillis()
                 _data.update { if (it.status == OK) it else it.copy(status = OK) }
             } else {
                 empty++
