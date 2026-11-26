@@ -185,9 +185,13 @@ object ObdManager {
 
     // Đổi sang hồ sơ xe khác: dùng bảng tỉ số mới, bỏ kết quả cấp số cũ để tính lại từ đầu
     fun applyProfile(p: VehicleProfile) {
+        val protoChanged = p.obdProtocol != prof.obdProtocol
         prof = p
+        priIdx = 0
         hwGear = null; a4Fail = 0; gCand = null; gCnt = 0; kEma = 0.0
         _data.update { it.copy(gear = null, gearEst = true) }
+        // Đổi giao thức OBD cố định thì phải khởi tạo lại adapter; các thay đổi khác giữ nguyên kết nối
+        if (protoChanged && source == 0) appCtx?.let { restart(it, source) }
     }
 
     fun restart(ctx: Context, src: Int) {
@@ -203,7 +207,11 @@ object ObdManager {
         start(ctx)
     }
 
+    @Volatile private var appCtx: Context? = null
+    private var priIdx = 0
+
     fun start(ctx: Context) {
+        appCtx = ctx.applicationContext
         if (job?.isActive == true) return
         val app = ctx.applicationContext
         job = scope.launch { if (source == 1) runTorque() else runDirect(app) }
@@ -261,7 +269,7 @@ object ObdManager {
                 adapterLabel = lbl
                 st("Đã nối $lbl, đang khởi tạo…")
                 delay(400)
-                for (c in listOf("ATZ", "ATE0", "ATL0", "ATS0", "ATH0", "ATAT1", "ATSP0")) {
+                for (c in listOf("ATZ", "ATE0", "ATL0", "ATS0", "ATH0", "ATAT1", "ATSP" + prof.obdProtocol.coerceIn(0, 9))) {
                     try {
                         Log.d("Obd", c + " -> " + t.request(c, if (c == "ATZ") 6000 else 3000))
                     } catch (e: CancellationException) {
@@ -384,6 +392,12 @@ object ObdManager {
             PIDS.firstOrNull { it.pid == "0D" }?.let { list.add(it) }
             val slow = if (n % 2 == 0) "0B" else lp
             PIDS.firstOrNull { it.pid == slow && it.pid in sup }?.let { list.add(it) }
+            // PID ưu tiên của hồ sơ xe: xoay vòng, mỗi vòng chẵn hỏi một PID (tối đa 6 PID nên vẫn nhẹ cho adapter)
+            val pri = prof.priorityPids.filter { it in sup && it !in core }
+            if (pri.isNotEmpty() && n % 2 == 1) {
+                PIDS.firstOrNull { it.pid == pri[priIdx % pri.size] }?.let { list.add(it) }
+                priIdx = (priIdx + 1) % pri.size
+            }
             if (rest.isNotEmpty() && n % 3 == 0) {
                 list.add(rest[rr % rest.size])
                 rr = (rr + 1) % rest.size

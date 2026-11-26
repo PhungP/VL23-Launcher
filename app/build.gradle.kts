@@ -78,5 +78,6 @@ dependencies {
     implementation("androidx.core:core-ktx:1.13.1")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
     testImplementation("junit:junit:4.13.2")
+    testImplementation("org.json:json:20240303")   // org.json thật cho unit test JVM (trên Android là thư viện hệ thống)
     implementation("org.maplibre.gl:android-sdk:11.8.0")   // MapLibre Native: bản đồ vector mã nguồn mở
 }

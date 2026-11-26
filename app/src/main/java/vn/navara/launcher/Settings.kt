@@ -307,6 +307,7 @@ fun SettingsScreen(
     onChange: (UiPrefs) -> Unit,
     onPickBg: (Uri) -> Unit,
     onPickCar: (Uri) -> Unit,
+    openProfiles: () -> Unit = {},
     onClose: () -> Unit,
 ) {
     // Cài đặt chia theo chủ đề: mở vào là danh sách, bấm một mục mới hiện phần cài đặt tương ứng (-1 = danh sách)
@@ -456,10 +457,11 @@ fun SettingsScreen(
                             if (sel) Text("Đang dùng", color = t.accent, fontSize = 18.sp, fontWeight = FontWeight.Bold)
                             else Btn("Chọn") {
                                 // Áp dụng hồ sơ: giao diện, ảnh xe, 6 ô thông số, thông số ở trang OBD và bảng tỉ số hộp số
-                                onChange(p.copy(vehicle = v.id, screenMode = if (v.id.startsWith("honda")) 1 else if (v.id.startsWith("nissan")) 0 else p.screenMode, skin = v.skin, homeTiles = v.homeTiles, carImg = 0, carPhoto = 0, homeOffsets = "", homeSizes = "", homeStyles = "", obdTiles = "", gearTrim = 2))
+                                onChange(p.withVehicle(v))
                             }
                         }
                     }
+                    line("Tạo, sửa, nhân bản, nhập / xuất, sao lưu hồ sơ xe") { Btn("Quản lý hồ sơ") { openProfiles() } }
                     note(
                         "Chọn đúng xe của bạn để ứng dụng đổi giao diện, ảnh xe, thông số trang 1 và trang OBD, danh sách PID được đọc và bảng tỉ số hộp số tính cấp số. " +
                             "Sau khi chọn, bạn vẫn chỉnh lại từng phần ở các mục bên dưới."

@@ -331,6 +331,7 @@ fun Root(applyBars: (Boolean) -> Unit) {
     var bg by remember { mutableStateOf<ImageBitmap?>(null) }
     var settings by remember { mutableStateOf(false) }
     var dialer by remember { mutableStateOf(false) }
+    var profilesOpen by remember { mutableStateOf(false) }
     val theme = remember(prefs, bg) { Theme(prefs, bg) }
     val update: (UiPrefs) -> Unit = { prefs = it; savePrefs(ctx, it) }
 
@@ -343,8 +344,11 @@ fun Root(applyBars: (Boolean) -> Unit) {
     LaunchedEffect(Unit) { VehicleMonitor.run(ctx) }
     LaunchedEffect(prefs.trafficAlert) { TrafficAlert.enabled = prefs.trafficAlert }
     // Hồ sơ xe: gán ngay trong lúc dựng giao diện để mọi trang đọc cùng một hồ sơ; lớp OBD đổi bảng tỉ số hộp số
+    remember { Profiles.init(ctx); true }
+    val profVer by Profiles.version.collectAsState()   // đọc để dựng lại khi hồ sơ người dùng đổi
     Vehicles.current = Vehicles.byId(prefs.vehicle)
-    LaunchedEffect(prefs.vehicle) { ObdManager.applyProfile(Vehicles.byId(prefs.vehicle)) }
+    val activeData = Vehicles.byId(prefs.vehicle).toData()
+    LaunchedEffect(prefs.vehicle, activeData) { ObdManager.applyProfile(Vehicles.byId(prefs.vehicle)) }
     LaunchedEffect(prefs.loadSource) { ObdManager.loadSource = prefs.loadSource }
     LaunchedEffect(prefs.gearTrim) { ObdManager.gearTrim = prefs.gearTrim }
     LaunchedEffect(prefs.obdSource) { ObdManager.restart(ctx, prefs.obdSource) }
@@ -384,8 +388,9 @@ fun Root(applyBars: (Boolean) -> Unit) {
                             withContext(Dispatchers.IO) { saveCarImage(ctx, uri) }
                             update(prefs.copy(carImg = 1, carVer = prefs.carVer + 1))
                         }
-                    }) { settings = false }
+                    }, { profilesOpen = true }) { settings = false }
                 }
+                if (profilesOpen) ProfileManagerScreen(prefs, update) { profilesOpen = false }
                 if (dialer) DialerScreen { dialer = false }
             }
             }

@@ -70,6 +70,9 @@ class AlertEngine(var config: AlertConfig = AlertConfig()) {
     fun acknowledgeAll() { for (k in _active.keys.toList()) acknowledge(k) }
     fun clearHistory() = _history.clear()
 
+    /** Xoá mọi cảnh báo đang bật và bộ đếm (khi đổi hồ sơ xe: cảnh báo của xe cũ không áp sang xe mới). Lịch sử giữ lại. */
+    fun reset() { _active.clear(); tracks.clear() }
+
     private class Cond(val kind: AlertKind, val subject: String, val on: Boolean, val message: String, val source: String)
 
     /** Gọi định kỳ (khoảng 1 lần/giây) với ảnh chụp mới nhất. Trả về các cảnh báo vừa BẬT trong lần gọi này. */

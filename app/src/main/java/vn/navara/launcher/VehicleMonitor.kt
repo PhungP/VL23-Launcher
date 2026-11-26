@@ -30,6 +30,7 @@ object VehicleMonitor {
     private val controller = DriveModeController()
     private var everLive = false
     private var everFix = false
+    private var lastProfileId = ""
 
     fun load(ctx: Context) {
         val s = ctx.getSharedPreferences("vl23_monitor", Context.MODE_PRIVATE)
@@ -91,9 +92,12 @@ object VehicleMonitor {
         val snap = Snapshots.build(raw, now)
         _snapshot.value = snap
 
-        val rpmRed = Vehicles.current.rpmRed.toFloat()
-        val ac = alertConfig.value
-        engine.config = if (ac.rpmMax > 0f) ac else ac.copy(rpmMax = rpmRed)
+        val prof = Vehicles.current
+        // Đổi xe: cảnh báo đang bật của xe cũ không được áp sang xe mới
+        if (prof.id != lastProfileId) { if (lastProfileId.isNotEmpty()) engine.reset(); lastProfileId = prof.id }
+        // Ngưỡng chung của người dùng, rồi ngưỡng riêng của hồ sơ xe đè lên (nếu có); vòng tua mặc định theo vạch đỏ của xe
+        val ac = alertConfig.value.withOverrides(prof.alerts)
+        engine.config = if (ac.rpmMax > 0f) ac else ac.copy(rpmMax = prof.rpmRed.toFloat())
         engine.evaluate(snap)
         publish()
 

@@ -34,9 +34,22 @@ class VehicleProfile(
     val rpmMax: Int,                     // thang đồng hồ vòng tua
     val rpmRed: Int,                     // bắt đầu vùng đỏ
     val barMax: Int,                     // thang dải đèn vòng tua ở trang OBD
+    // ---- Các trường dưới đây có giá trị mặc định nên hồ sơ dựng sẵn ở trên không cần khai báo ----
+    val custom: Boolean = false,         // true = hồ sơ do người dùng tạo (lưu trong ProfileRepository)
+    val nickname: String = "",
+    val displacementL: Double = 0.0,
+    val drivetrain: String = "",
+    val vehicleType: String = "",
+    val idleRpm: Int = 0,
+    val maxSpeedKmh: Int = 0,
+    val fuelTankL: Double = 0.0,
+    val wheelSize: String = "",
+    val obdProtocol: Int = 0,            // 0 tự động (ATSP0), 1..9 cố định
+    val priorityPids: List<String> = emptyList(),   // PID hỏi thường xuyên hơn
+    val alerts: AlertOverride = AlertOverride(),    // ngưỡng cảnh báo riêng của xe
 ) {
-    val title: String get() = "$brand $model $year" + if (variant.isNotBlank()) " $variant" else ""
-    val spec: String get() = "$engine · $gearbox"
+    val title: String get() = nickname.ifBlank { listOf(brand, model, if (year > 0) year.toString() else "", variant).filter { it.isNotBlank() }.joinToString(" ") }
+    val spec: String get() = listOf(engine, gearbox).filter { it.isNotBlank() }.joinToString(" · ")
 }
 
 object Vehicles {
@@ -109,10 +122,15 @@ object Vehicles {
         rpmMax = 6000, rpmRed = 4500, barMax = 5000,
     )
 
-    val all: List<VehicleProfile> = listOf(NAVARA, ACCORD, GENERIC_PETROL, GENERIC_DIESEL)
+    val builtin: List<VehicleProfile> = listOf(NAVARA, ACCORD, GENERIC_PETROL, GENERIC_DIESEL)
+
+    /** Hồ sơ người dùng (do ProfileRepository cập nhật). */
+    @Volatile var user: List<VehicleProfile> = emptyList()
+
+    val all: List<VehicleProfile> get() = builtin + user
 
     // Hồ sơ đang dùng; Root cập nhật mỗi khi đổi trong Cài đặt để mọi trang đọc cùng một giá trị
     @Volatile var current: VehicleProfile = NAVARA
 
-    fun byId(id: String): VehicleProfile = all.firstOrNull { it.id == id } ?: NAVARA
+    fun byId(id: String): VehicleProfile = builtin.firstOrNull { it.id == id } ?: user.firstOrNull { it.id == id } ?: NAVARA
 }
